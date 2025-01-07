@@ -49,12 +49,22 @@ plot6 <- ElbowPlot(tissue)
 ggsave(plot6, "RunPCA_ElbowPlot.pdf", width = 10,height = 10)
 
 tissue <- FindNeighbors(tissue, dims = 1:30)#一般都取1：30
-tissue <- FindClusters(tissue, resolution = 0.5)#一般都取0.5
+tissue <- FindClusters(tissue, resolution = 0.5)#resolution可更改
 head(Idents(tissue), 5)
 tissue <- RunUMAP(tissue, dims = 1:30)
 plot7 <- DimPlot(tissue, reduction = "umap", label = TRUE, repel = TRUE)#可切换为tsne图
-ggsave(plot7, "RunUMAP_DimPlot.pdf", width = 10,height = 10)#切换为tsne图之后记得改文件名
-plot8 <- DimPlot(pbmc.P, reduction = "umap", group.by = "sample")#同上一步
-ggsave(plot8, "RunUMAP_sample_DimPlot.pdf", width = 10,height = 10)
+ggsave(plot7, "RunUMAP_DimPlot.pdf", width = 10, height = 10)#切换为tsne图之后记得改文件名
+plot8 <- DimPlot(tissue, reduction = "umap", group.by = "sample")#同上一步
+ggsave(plot8, "RunUMAP_sample_DimPlot.pdf", width = 10, height = 10)
 
 #4.去批次效应
+library(harmony)
+tissue <- RunHarmony(tissue, reduction = "pca", group.by.vars = "sample", reduction.save = "harmony")
+tissue <- RunUMAP(tissue, reduction = "harmony", dims = 1:30, reduction.name = "umap")
+tissue <- FindNeighbors(tissue, reduction = "harmony", dims = 1:30)
+tissue <- FindClusters(tissue, resolution = 0.5)
+plot1 <- DimPlot(tissue, reduction = "umap",group.by = "sample", label = F,repel = TRUE)
+plot2 <- DimPlot(tissue, reduction = "umap", label = T,repel = TRUE)
+plot3 <- plot1 + plot2
+ggsave(plot3, "RunHarmony_umap_DimPlot.pdf", width = 20, height = 10)
+saveRDS(tissue,"tissue.rds")
