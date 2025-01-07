@@ -68,3 +68,18 @@ plot2 <- DimPlot(tissue, reduction = "umap", label = T,repel = TRUE)
 plot3 <- plot1 + plot2
 ggsave(plot3, "RunHarmony_umap_DimPlot.pdf", width = 20, height = 10)
 saveRDS(tissue,"tissue.rds")
+
+#5.计算marker基因并绘制热图
+markers <- FindAllMarkers(tissue, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+library(dplyr)
+top20 <- markers %>% group_by(cluster) %>% top_n(n = 20, wt = avg_log2FC)
+write.csv(top20,"cluster_top20_marker.csv")
+plot1 <- DoHeatmap(tissue, features = top_gene_names, group.by = "ident") +
+                   scale_fill_gradientn(colors = c("blue", "white", "red")) +
+                   theme_minimal() +
+                   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  
+                   axis.text.y = element_text(size = 10)) +  
+                   labs(title = "Top Differential Genes by Cell Type")
+ggsave(plot1,"cluster_top20_marker_heatmap.pdf", width = 8, height = 6)
+
+#6.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
