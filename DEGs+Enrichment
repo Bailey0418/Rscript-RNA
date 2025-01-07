@@ -1,0 +1,150 @@
+#1.计算差异表达基因
+setwd("/```/")
+library(Seurat)
+library(patchwork)
+library(dplyr)
+tissue_ECs <- readRDS("tissue_3ECs.rds")
+ #计算亚型之间的差异基因
+diff.wilcox = FindAllMarkers(tissue_ECs)
+all.markers = diff.wilcox %>% select(gene, everything()) %>% subset(p_val<0.05&abs(avg_log2FC)>1)#调整参数的位置
+write.csv(all.markers, "diff_genes_wilcox.csv", row.names = F)
+#top50 = all.markers %>% group_by(cluster) %>% top_n(n = 50, wt = avg_log2FC)
+a <- all.markers[which(all.markers$cluster == "EC"),]
+write.csv(a, "EC_diff_genes_wilcox.csv", row.names = F)
+b <- all.markers[which(all.markers$cluster == "ECFC"),]
+write.csv(b, "ECFC_diff_genes_wilcox.csv", row.names = F)
+c <- all.markers[which(all.markers$cluster == "EPC"),]
+write.csv(c, "EPC_diff_genes_wilcox.csv", row.names = F)
+
+ #计算每种亚型case/control组之间的差异基因
+tissue_ECs$seurat_clusters <- Idents(tissue_ECs)
+tissue <- subset(tissue_ECs,seurat_clusters == "EC")
+diff_genes <- FindMarkers(tissue, ident.1 = "D", ident.2 = "N", group.by = "source")
+write.csv(diff_genes, "EC_case_control_diff_genes.csv", row.names = T)
+diff_genes1 <- subset(diff_genes, p_val_adj < 0.05&abs(avg_log2FC)>1)#修改参数的位置
+write.csv(diff_genes1, "EC_case_control_diff_genes_filter_q0.05.csv", row.names = T)
+
+ #在样本分组之间查看指定基因的表达箱线图
+library(ggplot2)
+gene <- "CCL18"
+gene_expr <- FetchData(tissue, vars = gene)
+gene_expr$group <- tissue@meta.data$source
+plot1 <- ggplot(gene_expr, aes(x = group, y = get(gene))) + 
+                geom_boxplot() + 
+                labs(title = paste("Expression of", gene, "in Different Sample Groups"),
+                     x = "Sample Group", 
+                     y = "Expression Level") + 
+                theme_minimal()
+ggsave("CCL18_case_control_exp.pdf", plot = plot1, width = 10, height = 10)
+
+#2.差异基因结果可视化
+ #普通差异结果可视化
+library(ggVolcano)
+EPC <- read.csv("EC_case_control_diff_genes_filter_q0.05.csv")
+EPC <- add_regulate(EPC, log2FC_name = "avg_log2FC", fdr_name = "p_val_adj",log2FC = 1, fdr = 0.05)
+table(EPC$regulate)
+plot1 <- ggvolcano(EPC, x = "log2FoldChange", y = "padj",
+                   fills = c("#3FA2F6","#e94234"),
+                   colors = c("#3FA2F6","#e94234"),
+                   label = "X", label_number = 10, output = FALSE)
+ggsave("EPC_DEGs.pdf", plot = plot1, width = 10, height = 10)
+
+ #亚型之间的差异基因结果可视化
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+EC.markers <- read.csv("D:/acv/240601糖尿病足/result/240819DEG/diff_genes_wilcox_filter_q0.05.csv")
+EC.markers$label <- ifelse(EC.markers$p_val<0.05,"P-val<0.05","P-val>=0.05")
+top10sig0 <- filter(EC.markers,cluster=="EPC") %>% distinct(gene,.keep_all = T) %>% top_n(10,abs(avg_log2FC))
+top10sig1 <- filter(EC.markers,cluster=="ECFC") %>% distinct(gene,.keep_all = T) %>% top_n(10,abs(avg_log2FC))
+top10sig2 <- filter(EC.markers,cluster=="EC") %>% distinct(gene,.keep_all = T) %>% top_n(10,abs(avg_log2FC))
+top10sig <- rbind(top10sig0,top10sig1,top10sig2)
+EC.markers$size <- case_when(!(EC.markers$gene %in% top10sig$gene)~ 1,EC.markers$gene %in% top10sig$gene ~ 2)
+EC.markers <- filter(EC.markers,size==1)
+head(EC.markers)
+table(EC.markers$cluster)
+p1 <- ggplot()+
+     geom_jitter(data = EC.markers, aes(x = cluster, y = avg_log2FC, color = label), size = 0.85, width = 0.4)+
+     geom_jitter(data = top10sig, aes(x = cluster, y = avg_log2FC, color = label), size = 1, width = 0.4)
+dfbar <- data.frame(x = c("EC", "ECFC", "EPC"), y = c(4, 6.5, 9.5))
+dfbar1 <- data.frame(x = c("EC","ECFC","EPC"), y =c (-7,-5,-2.6))#根据图p中log2FC区间确定背景柱长度
+#绘制背景柱：
+p2 <- ggplot()+
+      geom_col(data = dfbar, mapping = aes(x = x,y = y), fill = "#dcdcdc",alpha = 0.6)+
+      geom_col(data = dfbar1, mapping = aes(x = x,y = y), fill = "#dcdcdc",alpha = 0.6)+
+      geom_jitter(data = EC.markers, aes(x = cluster, y = avg_log2FC, color = label), size = 0.85, width = 0.4)+
+      geom_jitter(data = top10sig, aes(x = cluster, y = avg_log2FC, color = label), size = 1, width =0.4)
+dfcol<-data.frame(x = c("EC","ECFC","EPC"), y = 0, label = c("EC","ECFC","EPC"))
+mycol <- c("#E64B357F", "#4DBBD57F", "#3C54887F")
+p3 <- p2 + 
+      geom_tile(data = dfcol, aes(x = x,y = y), height = 1.25, color = "black", fill = mycol, alpha = 0.6, show.legend = F)
+p4 <- p3+
+      geom_text_repel(data = top10sig, aes(x = cluster,y = avg_log2FC,label = gene), force = 0.8, arrow = arrow(length = unit(0.008, "npc"), type = "open", ends = "last"), max.overlaps = 30)
+p5 <- p4 +
+      scale_color_manual(name = NULL, values = c("red","black"))
+p6 <- p5+
+      labs(x = "Cluster",y = "average log2FC")+
+      geom_text(data = dfcol, aes(x = x,y = y,label = label), size = 6, color = "white")
+ggsave("subtype_DGEs.pdf", plot = p6, width = 10, height = 10)
+
+#3.KEGG通路富集分析
+library(clusterProfiler)
+library(org.Hs.eg.db)#将Symbol转换为基因符号Entrez ID
+library(dplyr)
+library(DOSE)
+library(ggplot2)
+library(GEOquery)#R包加载
+library(tidyr)
+DEGs <- read.csv("EPC_case_control_diff_genes.csv",row.names = 1)
+diff_entrez<-bitr(rownames(DEGs),fromType = 'SYMBOL',toType = 'ENTREZID',OrgDb = 'org.Hs.eg.db')
+head(diff_entrez)
+KEGG_enrich <- clusterProfiler::enrichKEGG(gene = diff_entrez$ENTREZID,
+                                           organism = "hsa", #物种Homo sapiens 
+                                           pvalueCutoff = 0.05,#pvalue阈值
+                                           qvalueCutoff = 0.05,#qvalue阈值
+                                           pAdjustMethod = "BH",#p值矫正方法，one of "holm", 
+                                           #"hochberg", "hommel", 
+                                           #"bonferroni", "BH", 
+                                           #"BY", "fdr", "none"
+                                           minGSSize = 10,#富集分析中考虑的最小基因集合大小
+                                           maxGSSize = 500)#富集中考虑的最大基因集合大小
+KEGG_enrich<-setReadable(KEGG_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol               
+KEGG_result<-KEGG_enrich@result
+KEGG_result
+KEGG_result <- KEGG_result[which(KEGG_result$pvalue<0.05&KEGG_result$qvalue<0.05),]
+write.csv(KEGG_result,"EPC_KEGG_result.csv")
+
+ #结果可视化
+kegg_result <- separate(data = X, col = GeneRatio, into = c("GR1", "GR2"), sep = "/")
+kegg_result <- mutate(kegg_result, GeneRatio = (as.numeric(GR1)/as.numeric(GR2)))
+plot1 <- ggplot(kegg_result,aes(x = GeneRatio,y = fct_reorder(Description, GeneRatio)))+#将term顺序按照GeneRatio进行排序
+                geom_point(aes(size = Count,fill = p.adjust),shape = 21, color = 'black')+ #分面
+                scale_fill_gradient(low ='#E27371',high = '#5D82A7')+ #修改气泡图颜色
+                labs(title = 'KEGG Enrichment', y = 'KEGG term', x = 'GeneRatio')+ #标题修改
+                guides(fill = guide_colorbar(reverse = T,order = 1))+
+                theme_bw()#主题
+ggsave("KEGG_result.pdf", plot = plot1, width = 10, height = 10)
+#4.GO功能富集
+go_enrich<-clusterProfiler::enrichGO(gene = diff_entrez$ENTREZID,
+                                     ont = 'all',#可选'BP','CC','MF' or 'all'
+                                     keyType = "ENTREZID",
+                                     OrgDb = org.Hs.eg.db,
+                                     pAdjustMethod = "BH",#p值矫正方法
+                                     pvalueCutoff = 0.05,
+                                     qvalueCutoff = 0.05)
+go_enrich<-DOSE::setReadable(go_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol
+go_geo<- simplify(go_enrich, cutoff=0.7, by="p.adjust", select_fun=min)#去除冗余的GO term
+go_result<-go_geo@result
+go_result
+write.csv(go_result,"EPC_case_control_G0_result.csv")
+
+ #结果可视化
+plot1 <- ggplot(X, aes(x = GeneRatio, y = fct_reorder(Description, GeneRatio)))+ #将term顺序按照GeneRatio进行排序
+               geom_point(aes(size = Count, fill = p.adjust), shape = 21, color = 'black')+ #分面
+               facet_grid(ONTOLOGY~., scale = 'free_y', space = 'free_y')+
+               scale_fill_gradient(low = '#E27371', high = '#5D82A7')+ #修改气泡图颜色
+               labs(title = 'GO Enrichment', y = 'GO term', x = 'GeneRatio')+ #标题修改
+               guides(fill = guide_colorbar(reverse = T,order = 1))+
+               theme_bw()#主题
+ggsave("GO_result.pdf", plot = plot1, width = 10, height = 10)
