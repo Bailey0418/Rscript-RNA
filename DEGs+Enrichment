@@ -59,7 +59,7 @@ EC.markers$label <- ifelse(EC.markers$p_val<0.05,"P-val<0.05","P-val>=0.05")
 top10sig0 <- filter(EC.markers,cluster=="EPC") %>% distinct(gene,.keep_all = T) %>% top_n(10,abs(avg_log2FC))
 top10sig1 <- filter(EC.markers,cluster=="ECFC") %>% distinct(gene,.keep_all = T) %>% top_n(10,abs(avg_log2FC))
 top10sig2 <- filter(EC.markers,cluster=="EC") %>% distinct(gene,.keep_all = T) %>% top_n(10,abs(avg_log2FC))
-top10sig <- rbind(top10sig0,top10sig1,top10sig2)
+top10sig <- rbind(top10sig0, top10sig1, top10sig2)
 EC.markers$size <- case_when(!(EC.markers$gene %in% top10sig$gene)~ 1,EC.markers$gene %in% top10sig$gene ~ 2)
 EC.markers <- filter(EC.markers,size==1)
 head(EC.markers)
@@ -97,7 +97,7 @@ library(ggplot2)
 library(GEOquery)#R包加载
 library(tidyr)
 DEGs <- read.csv("EPC_case_control_diff_genes.csv",row.names = 1)
-diff_entrez<-bitr(rownames(DEGs),fromType = 'SYMBOL',toType = 'ENTREZID',OrgDb = 'org.Hs.eg.db')
+diff_entrez <- bitr(rownames(DEGs),fromType = 'SYMBOL',toType = 'ENTREZID',OrgDb = 'org.Hs.eg.db')
 head(diff_entrez)
 KEGG_enrich <- clusterProfiler::enrichKEGG(gene = diff_entrez$ENTREZID,
                                            organism = "hsa", #物种Homo sapiens 
@@ -106,8 +106,8 @@ KEGG_enrich <- clusterProfiler::enrichKEGG(gene = diff_entrez$ENTREZID,
                                            pAdjustMethod = "BH",#p值矫正方法，one of "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
                                            minGSSize = 10,#富集分析中考虑的最小基因集合大小
                                            maxGSSize = 500)#富集中考虑的最大基因集合大小
-KEGG_enrich<-setReadable(KEGG_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol               
-KEGG_result<-KEGG_enrich@result
+KEGG_enrich <- setReadable(KEGG_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol               
+KEGG_result <- KEGG_enrich@result
 KEGG_result
 KEGG_result <- KEGG_result[which(KEGG_result$pvalue<0.05&KEGG_result$qvalue<0.05),]
 write.csv(KEGG_result,"EPC_KEGG_result.csv")
@@ -115,7 +115,7 @@ write.csv(KEGG_result,"EPC_KEGG_result.csv")
  #结果可视化
 kegg_result <- separate(data = X, col = GeneRatio, into = c("GR1", "GR2"), sep = "/")
 kegg_result <- mutate(kegg_result, GeneRatio = (as.numeric(GR1)/as.numeric(GR2)))
-plot1 <- ggplot(kegg_result,aes(x = GeneRatio,y = fct_reorder(Description, GeneRatio)))+#将term顺序按照GeneRatio进行排序
+plot1 <- ggplot(kegg_result,aes(x = GeneRatio,y = fct_reorder(Description, GeneRatio)))+ #将term顺序按照GeneRatio进行排序
                 geom_point(aes(size = Count,fill = p.adjust),shape = 21, color = 'black')+ #分面
                 scale_fill_gradient(low ='#E27371',high = '#5D82A7')+ #修改气泡图颜色
                 labs(title = 'KEGG Enrichment', y = 'KEGG term', x = 'GeneRatio')+ #标题修改
@@ -130,11 +130,11 @@ go_enrich<-clusterProfiler::enrichGO(gene = diff_entrez$ENTREZID,
                                      pAdjustMethod = "BH",#p值矫正方法
                                      pvalueCutoff = 0.05,
                                      qvalueCutoff = 0.05)
-go_enrich<-DOSE::setReadable(go_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol
-go_geo<- simplify(go_enrich, cutoff=0.7, by="p.adjust", select_fun=min)#去除冗余的GO term
-go_result<-go_geo@result
+go_enrich <- DOSE::setReadable(go_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol
+go_geo <- simplify(go_enrich, cutoff = 0.7, by = "p.adjust", select_fun = min)#去除冗余的GO term
+go_result <- go_geo@result
 go_result
-write.csv(go_result,"EPC_case_control_G0_result.csv")
+write.csv(go_result, "EPC_case_control_G0_result.csv")
 
  #结果可视化
 plot1 <- ggplot(X, aes(x = GeneRatio, y = fct_reorder(Description, GeneRatio)))+ #将term顺序按照GeneRatio进行排序
