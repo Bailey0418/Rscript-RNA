@@ -103,10 +103,7 @@ KEGG_enrich <- clusterProfiler::enrichKEGG(gene = diff_entrez$ENTREZID,
                                            organism = "hsa", #物种Homo sapiens 
                                            pvalueCutoff = 0.05,#pvalue阈值
                                            qvalueCutoff = 0.05,#qvalue阈值
-                                           pAdjustMethod = "BH",#p值矫正方法，one of "holm", 
-                                           #"hochberg", "hommel", 
-                                           #"bonferroni", "BH", 
-                                           #"BY", "fdr", "none"
+                                           pAdjustMethod = "BH",#p值矫正方法，one of "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
                                            minGSSize = 10,#富集分析中考虑的最小基因集合大小
                                            maxGSSize = 500)#富集中考虑的最大基因集合大小
 KEGG_enrich<-setReadable(KEGG_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol               
