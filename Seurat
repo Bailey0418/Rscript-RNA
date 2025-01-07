@@ -140,7 +140,7 @@ tissue <- RenameIdents(tissue, new.cluster.ids)
 saveRDS(tissue, "tissue_EC.rds")
 tissue_3_ECs <- subset(tissue,idents = c('EPC','ECFC','EC'))
 table(Idents(tissue_3_ECs))
-saveRDS(tissue_3_ECs,"tissue_3_ECs.rds")
+saveRDS(tissue_3_ECs,"tissue_3ECs.rds")
 
 #9.美化版tsne图绘制代码
 Idents(tissue) <- tissue$RNA_snn_res.0.5
