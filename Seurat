@@ -23,12 +23,12 @@ tissue[["percent.mt"]] <- PercentageFeatureSet(tissue, pattern = "^MT-")
 tissue$log10GenesPerUMI <- log10(tissue$nFeature_RNA)/log10(tissue$nCount_RNA)
 tissue <- subset(tissue,subset = nFeature_RNA > 200&nFeature_RNA < 6000&percent.mt < 10&log10GenesPerUMI > 0.8)
 plot1 <- VlnPlot(tissue, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3,group.by = "orig.ident")
-ggsave(plot1, "filter_cell_vlnplot.pdf", width = 10, height = 10)
+ggsave("filter_cell_vlnplot.pdf", plot = plot1, width = 10, height = 10)
 
 plot1 <- FeatureScatter(tissue, feature1 = "nCount_RNA", feature2 = "percent.mt",group.by = "orig.ident")
 plot2 <- FeatureScatter(tissue, feature1 = "nCount_RNA", feature2 = "nFeature_RNA",group.by = "orig.ident")
 plot3 <- plot1 + plot2
-ggsave(plot3, "filter_cell_FeatureScatter.pdf", width = 20, height = 10)
+ggsave("filter_cell_FeatureScatter.pdf", plot = plot3, width = 20, height = 10)
 #3.数据标准化
 tissue <- NormalizeData(tissue, normalization.method = "LogNormalize", scale.factor = 10000)
 tissue <- FindVariableFeatures(tissue, selection.method = "vst", nfeatures = 2000)
@@ -36,26 +36,26 @@ top10 <- head(VariableFeatures(tissue), 10)
 plot1 <- VariableFeaturePlot(tissue)
 plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
 plot3  <- plot1 + plot2
-ggsave(plot3, "Normalize_VariableFeaturePlot.pdf", width = 20,height = 10)
+ggsave("Normalize_VariableFeaturePlot.pdf", plot = plot3, width = 20, height = 10)
 
 all.genes <- rownames(tissue)
 tissue <- ScaleData(tissue, features = all.genes)
 tissue <- RunPCA(tissue, features = VariableFeatures(object = tissue))
 plot4 <- VizDimLoadings(tissue, dims = 1:2, reduction = "pca")
-ggsave(plot4, "RunPCA_VizDimLoadings.pdf", width = 20,height = 10)
+ggsave("RunPCA_VizDimLoadings.pdf", plot = plot4, width = 20,height = 10)
 plot5 <- DimPlot(tissue, reduction = "pca", group.by = "orig.ident")
-ggsave(plot5, "RunPCA_DimPlot.pdf", width = 10,height = 10)
+ggsave("RunPCA_DimPlot.pdf", plot = plot5, width = 10,height = 10)
 plot6 <- ElbowPlot(tissue)
-ggsave(plot6, "RunPCA_ElbowPlot.pdf", width = 10,height = 10)
+ggsave("RunPCA_ElbowPlot.pdf", plot = plot6, width = 10,height = 10)
 
 tissue <- FindNeighbors(tissue, dims = 1:30)#一般都取1：30
 tissue <- FindClusters(tissue, resolution = 0.5)#resolution可更改
 head(Idents(tissue), 5)
 tissue <- RunUMAP(tissue, dims = 1:30)
 plot7 <- DimPlot(tissue, reduction = "umap", label = TRUE, repel = TRUE)#可切换为tsne图
-ggsave(plot7, "RunUMAP_DimPlot.pdf", width = 10, height = 10)#切换为tsne图之后记得改文件名
+ggsave("RunUMAP_DimPlot.pdf", plot = plot7, width = 10, height = 10)#切换为tsne图之后记得改文件名
 plot8 <- DimPlot(tissue, reduction = "umap", group.by = "sample")#同上一步
-ggsave(plot8, "RunUMAP_sample_DimPlot.pdf", width = 10, height = 10)
+ggsave("RunUMAP_sample_DimPlot.pdf", plot = plot8, width = 10, height = 10)
 
 #4.去批次效应
 library(harmony)
@@ -66,7 +66,7 @@ tissue <- FindClusters(tissue, resolution = 0.5)
 plot1 <- DimPlot(tissue, reduction = "umap",group.by = "sample", label = F,repel = TRUE)
 plot2 <- DimPlot(tissue, reduction = "umap", label = T,repel = TRUE)
 plot3 <- plot1 + plot2
-ggsave(plot3, "RunHarmony_umap_DimPlot.pdf", width = 20, height = 10)
+ggsave("RunHarmony_umap_DimPlot.pdf", plot = plot3, width = 20, height = 10)
 saveRDS(tissue,"tissue.rds")
 
 #5.计算marker基因并绘制热图
@@ -80,6 +80,24 @@ plot1 <- DoHeatmap(tissue, features = top_gene_names, group.by = "ident") +
                    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  
                    axis.text.y = element_text(size = 10)) +  
                    labs(title = "Top Differential Genes by Cell Type")
-ggsave(plot1,"cluster_top20_marker_heatmap.pdf", width = 8, height = 6)
+ggsave("cluster_top20_marker_heatmap.pdf", plot = plot1, width = 8, height = 6)
 
 #6.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
+new.cluster.ids <- c("Monocyte", "Monocyte","T cell", "T cell","T cell","T cell","Monocyte","B cell","Monocyte","Monocyte","T cell","Monocyte","T cell",
+                     "Basophil","Monocyte","Megakaryocyte","T cell","B cell","Monocyte","T cell","T cell","T cell","Neutrophil","B cell")#按顺序依次输入
+names(new.cluster.ids) <- levels(tissue)
+pbmc.P <- RenameIdents(tissue, new.cluster.ids)
+plot1 <- DimPlot(tissue, reduction = "umap", label = TRUE)
+ggsave("celltype_umap_DimPlot.pdf", plot = plot1, width = 10, height = 10)
+
+ #绘制细胞类型分组数据柱形图
+tissue$celltype <- Idents(tissue)
+cell_count <- tissue@meta.data %>% group_by(source, celltype) %>% summarise(count = n())  # 统计每个组合的数量
+cell_count <- cell_count %>% group_by(source) %>% mutate(total = sum(count), proportion = count / total)  # 计算每个细胞类型的占比
+plot2 <- ggplot(cell_count, aes(x = celltype, y = proportion, fill = source)) +  
+                geom_bar(stat = "identity", position = "dodge") +  # 设置position = "dodge"实现分组柱形图
+                scale_fill_manual(values = c("D" = "lightcoral", "N" = "lightblue")) +  # 手动设置颜色
+                labs(title = "Cell Composition by Source (D vs N)", 
+                x = "Cell Type", y = "Proportion", fill = "Source") +  # 设置标题和轴标签
+                theme(axis.text.x = element_text(angle = 45, hjust = 1))  # 调整x轴标签角度
+ggsave("celltype_number.pdf", plot = plot2, width = 5, height = 5)
