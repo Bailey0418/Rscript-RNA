@@ -74,22 +74,23 @@ markers <- FindAllMarkers(tissue, only.pos = TRUE, min.pct = 0.25, logfc.thresho
 library(dplyr)
 top20 <- markers %>% group_by(cluster) %>% top_n(n = 20, wt = avg_log2FC)
 write.csv(top20,"cluster_top20_marker.csv")
-plot1 <- DoHeatmap(tissue, features = top_gene_names, group.by = "ident") +
+
+#6.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
+new.cluster.ids <- c("Monocyte", "Monocyte","T cell", "T cell","T cell","T cell","Monocyte","B cell","Monocyte","Monocyte","T cell","Monocyte","T cell",
+                     "Basophil","Monocyte","Megakaryocyte","T cell","B cell","Monocyte","T cell","T cell","T cell","Neutrophil","B cell")#按顺序依次输入
+names(new.cluster.ids) <- levels(tissue)
+tissue <- RenameIdents(tissue, new.cluster.ids)
+plot1 <- DimPlot(tissue, reduction = "umap", label = TRUE)
+ggsave("celltype_umap_DimPlot.pdf", plot = plot1, width = 10, height = 10)
+
+ #绘制top基因热图
+plot1 <- DoHeatmap(tissue, features = top20$gene, group.by = "ident") +
                    scale_fill_gradientn(colors = c("blue", "white", "red")) +
                    theme_minimal() +
                    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),  
                    axis.text.y = element_text(size = 10)) +  
                    labs(title = "Top Differential Genes by Cell Type")
 ggsave("cluster_top20_marker_heatmap.pdf", plot = plot1, width = 8, height = 6)
-
-#6.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
-new.cluster.ids <- c("Monocyte", "Monocyte","T cell", "T cell","T cell","T cell","Monocyte","B cell","Monocyte","Monocyte","T cell","Monocyte","T cell",
-                     "Basophil","Monocyte","Megakaryocyte","T cell","B cell","Monocyte","T cell","T cell","T cell","Neutrophil","B cell")#按顺序依次输入
-names(new.cluster.ids) <- levels(tissue)
-pbmc.P <- RenameIdents(tissue, new.cluster.ids)
-plot1 <- DimPlot(tissue, reduction = "umap", label = TRUE)
-ggsave("celltype_umap_DimPlot.pdf", plot = plot1, width = 10, height = 10)
-
  #绘制细胞类型分组数据柱形图
 tissue$celltype <- Idents(tissue)
 cell_count <- tissue@meta.data %>% group_by(source, celltype) %>% summarise(count = n())  # 统计每个组合的数量
@@ -101,3 +102,60 @@ plot2 <- ggplot(cell_count, aes(x = celltype, y = proportion, fill = source)) +
                 x = "Cell Type", y = "Proportion", fill = "Source") +  # 设置标题和轴标签
                 theme(axis.text.x = element_text(angle = 45, hjust = 1))  # 调整x轴标签角度
 ggsave("celltype_number.pdf", plot = plot2, width = 5, height = 5)
+ #选择基因进行展示
+marker_sign <- c("CST3", 'FCER1A', 'FCN1', 'HLA-DPA1', 'IFIT2','ISG15', 'LYZ', 'MNDA', 'VCAN')
+plot3 <- FeaturePlot(tissue, features = marker_sign)
+ggsave("genes_FeaturePlot.pdf", plot = plot3, width = 10, height = 10)
+saveRDS(tissue,"tissue.rds")
+tissue_EC <- subset(tissue, idents = "Endothelial cell")
+saveRDS(tissue_EC, "tissue_EC.rds")
+
+#7.再次注释时查看每种marker方案的细胞数，选择较好的marker方案
+tissue <- readRDS("tissue_EC.rds")
+cellsub <- subset(tissue@meta.data, group=="D0")
+disease <- subset(tissue, cells=rownames(cellsub))
+disease_expr <- GetAssayData(disease, slot="data")
+dim(disease_expr)#使用相同的方法可查看control的细胞分布
+gene_expression <- disease_expr %>% .[c('KIT','FCER1A','TPSAB1','TPSB2','MS4A2','CPA3','CMA1','IL1RL1'),] %>% as.data.frame() %>% t()
+gene_expression <- as.data.frame(gene_expression)
+gene_expression_sel <- gene_expression[which(gene_expression$KIT > 0&gene_expression$FCER1A > 0&gene_expression$TPSAB1 > 0&gene_expression$TPSB2 > 0&gene_expression$MS4A2 > 0&gene_expression$CPA3 > 0&gene_expression$CMA1 > 0&gene_expression$IL1RL1 > 0),]
+dim(gene_expression_sel)
+
+ #确定marker方案后绘制dotplot图
+library(scCustomize) # 需要Seurat版本4.3.0
+library(RColorBrewer)
+library(ComplexHeatmap)
+a <- c('PECAM1','MCAM','CD34','CDH5','KDR','PROM1','PTPRC','CD14')
+plot1 <- DotPlot(tissue,features =  a,assay='RNA')
+ggsave("DotPlot.pdf", plot = plot1, width = 10, height = 10)
+ #特定基因featureplot图绘制
+plot2 <- FeaturePlot(tissue, features = "CD3D") 
+ggsave("CD3D_FeaturePlot.pdf", plot = p2, width = 10, height = 10)
+
+#8.subtype注释
+new.cluster.ids <- c('EC','other','other','other','other','other','other','other','other',
+                     'EC','ECFC','other','ECFC','EPC','EC')
+names(new.cluster.ids) <- levels(tissue1)
+tissue <- RenameIdents(tissue, new.cluster.ids)
+saveRDS(tissue, "tissue_EC.rds")
+tissue_3_ECs <- subset(tissue,idents = c('EPC','ECFC','EC'))
+table(Idents(tissue_3_ECs))
+saveRDS(tissue_3_ECs,"tissue_3_ECs.rds")
+
+#9.美化版tsne图绘制代码
+Idents(tissue) <- tissue$RNA_snn_res.0.5
+tissue <- RunTSNE(tissue, dims = 1:30,reduction.name = "tsne")
+library(RColorBrewer)
+cell_type_cols <- c(brewer.pal(9, "Set1"), 
+                    "#FF34B3","#BC8F8F","#20B2AA","#00F5FF","#FFA500","#ADFF2F",
+                    "#FF6A6A","#7FFFD4", "#AB82FF","#90EE90","#00CD00","#008B8B",
+                    "#6495ED","#FFC1C1","#CD5C5C","#8B008B","#FF3030", "#7CFC00")  
+
+plot1 <- DimPlot(tissue, label = T, reduction = "tsne", pt.size = 1, cols = cell_type_cols)+
+  NoLegend()+labs(x = "TSNE1", y = "TSNE2",title = "Celltype") +
+  theme(panel.border = element_rect(fill=NA,color="black", size=1, linetype="solid"),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+ggsave("cluster_tsne.pdf", plot = plot1, width = 5, height = 5)
