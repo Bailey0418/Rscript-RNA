@@ -1,0 +1,60 @@
+#1.多样本seurat.rds读入+合并
+setwd("/```/")
+library(Seurat)
+D02P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/4/data/rds/YS2305041_DFU0002P/DFU0002P_seurat.rds")
+D03P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/2/data/rds/YS2307059_DFU0003P/DFU0003P_seurat.rds")
+D04P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/2/data/rds/YS2307059_DFU0004P/DFU0004P_seurat.rds")
+D05P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/2/data/rds/YS2307059_DFU0005P/DFU0005P_seurat.rds")
+D06P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/2/data/rds/YS2307059_DFU0006P/DFU0006P_seurat.rds")
+ND04P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/1/data/rds/YS2309047_NNDFU0004P/NNDFU0004P_seurat.rds")
+ND05P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/1/data/rds/YS2309047_NNDFU0005P/NNDFU0005P_seurat.rds")
+ND13P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/1/data/rds/2310120_NNDFU0013p/NNDFU0013p_seurat.rds")
+ND14P <- readRDS("/mnt/raid5/Projects/SingleCell/SDUTCM.DiabeticFeet/RawData/6/data/rds/2311282_NNDFU0014P/NNDFU0014P_seurat.rds")
+tissue <- merge(D02P,y = c(D03P,D04P,D05P,D06P,ND04P,ND05P,ND13P,ND14P),
+                 add.cell.ids = c("D02P","D03P","D04P","D05P","D06P","ND04P","ND05P","ND13P","ND14P"),
+                 project = "PBMC56K",merge.data = TRUE)
+tissue$sample <- sapply(X = strsplit(colnames(pbmc.P), split = "_"), FUN = "[", 1)
+dim(tissue)
+table(tissue@meta.data$sample)
+
+#2.过滤细胞
+library(ggplot2)
+tissue[["percent.mt"]] <- PercentageFeatureSet(tissue, pattern = "^MT-")
+tissue$log10GenesPerUMI <- log10(tissue$nFeature_RNA)/log10(tissue$nCount_RNA)
+tissue <- subset(tissue,subset = nFeature_RNA > 200&nFeature_RNA < 6000&percent.mt < 10&log10GenesPerUMI > 0.8)
+plot1 <- VlnPlot(tissue, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3,group.by = "orig.ident")
+ggsave(plot1, "filter_cell_vlnplot.pdf", width = 10, height = 10)
+
+plot1 <- FeatureScatter(tissue, feature1 = "nCount_RNA", feature2 = "percent.mt",group.by = "orig.ident")
+plot2 <- FeatureScatter(tissue, feature1 = "nCount_RNA", feature2 = "nFeature_RNA",group.by = "orig.ident")
+plot3 <- plot1 + plot2
+ggsave(plot3, "filter_cell_FeatureScatter.pdf", width = 20, height = 10)
+#3.数据标准化
+tissue <- NormalizeData(tissue, normalization.method = "LogNormalize", scale.factor = 10000)
+tissue <- FindVariableFeatures(tissue, selection.method = "vst", nfeatures = 2000)
+top10 <- head(VariableFeatures(tissue), 10)
+plot1 <- VariableFeaturePlot(tissue)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot3  <- plot1 + plot2
+ggsave(plot3, "Normalize_VariableFeaturePlot.pdf", width = 20,height = 10)
+
+all.genes <- rownames(tissue)
+tissue <- ScaleData(tissue, features = all.genes)
+tissue <- RunPCA(tissue, features = VariableFeatures(object = tissue))
+plot4 <- VizDimLoadings(tissue, dims = 1:2, reduction = "pca")
+ggsave(plot4, "RunPCA_VizDimLoadings.pdf", width = 20,height = 10)
+plot5 <- DimPlot(tissue, reduction = "pca", group.by = "orig.ident")
+ggsave(plot5, "RunPCA_DimPlot.pdf", width = 10,height = 10)
+plot6 <- ElbowPlot(tissue)
+ggsave(plot6, "RunPCA_ElbowPlot.pdf", width = 10,height = 10)
+
+tissue <- FindNeighbors(tissue, dims = 1:30)#一般都取1：30
+tissue <- FindClusters(tissue, resolution = 0.5)#一般都取0.5
+head(Idents(tissue), 5)
+tissue <- RunUMAP(tissue, dims = 1:30)
+plot7 <- DimPlot(tissue, reduction = "umap", label = TRUE, repel = TRUE)#可切换为tsne图
+ggsave(plot7, "RunUMAP_DimPlot.pdf", width = 10,height = 10)#切换为tsne图之后记得改文件名
+plot8 <- DimPlot(pbmc.P, reduction = "umap", group.by = "sample")#同上一步
+ggsave(plot8, "RunUMAP_sample_DimPlot.pdf", width = 10,height = 10)
+
+#4.去批次效应
