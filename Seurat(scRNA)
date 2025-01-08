@@ -84,9 +84,28 @@ tissue <- RenameIdents(tissue, new.cluster.ids)
 plot1 <- DimPlot(tissue, reduction = "umap", label = TRUE)
 ggsave("celltype_umap_DimPlot.pdf", plot = plot1, width = 10, height = 10)
 
- #绘制top基因热图(提取为矩阵再画图)
-
- #绘制细胞类型分组数据柱形图
+ #绘制top基因热图(计算均值后再画图)
+gene_cell_exp <- AverageExpression(tissue, features = top20$gene, group.by = 'celltype', slot = 'data') 
+gene_cell_exp <- as.data.frame(gene_cell_exp$RNA)
+library(ComplexHeatmap)
+df <- data.frame(colnames(gene_cell_exp))#顶部细胞类型注释
+colnames(df) <- 'class'
+top_anno = HeatmapAnnotation(df = df, border = T, show_annotation_name = F, gp = gpar(col = 'black'),
+                             col = list(class = c("Adipocyte" = "#D6221E", "Endothelial cell" = "#3678AD", "Myeloid cell" = "#4DA74A", "Smooth muscle cell" = "#8F4B99", "T cell" = "#EF7C1B", 
+                                                  "Epithelial cell" = "#F0EB4C","Cycling cell" = "#A15428", "Mast cell" = "#E57FB0", "B cell" = "#999899", 
+                                                  "Melanocytes and Schwann cell" = "#D84794")))
+marker_exp <- t(scale(t(gene_cell_exp),scale = T,center = T))
+col_cluster <- setNames(c(rep("#D6221E",5), rep("#3678AD",5), rep("#4DA74A",5), rep("#8F4B99",5), rep("#EF7C1B",5), 
+                          rep("#F0EB4C",5), rep("#A15428",5), rep("#E57FB0",5), rep("#999899",5), rep("#D84794",5)),rownames(marker_exp))#与上面的标签一致
+row_info = rowAnnotation(foo = anno_text(rownames(marker_exp), location = 0, just = "left",gp = gpar(fill = col_cluster, col = "black"),
+                              width = max_text_width(rownames(marker_exp))*1.2))
+plot2 <- Heatmap(marker_exp, cluster_rows = F, cluster_columns = F, show_column_names = F, show_row_names = T, column_title = NULL, heatmap_legend_param = list(title=' '),
+                 col = colorRampPalette(c("lightblue","white","lightcoral"))(100), border = 'black', rect_gp = gpar(col = "black", lwd = 1), row_names_gp = gpar(fontsize = 10),
+                 column_names_gp = gpar(fontsize = 10), top_annotation = top_anno)+row_info
+pdf("top_gene_heatmap.pdf", width = 10, height = 10)
+draw(plot2)
+dev.off()
+#绘制细胞类型分组数据柱形图
 tissue$celltype <- Idents(tissue)
 cell_count <- tissue@meta.data %>% group_by(source, celltype) %>% summarise(count = n())  # 统计每个组合的数量
 cell_count <- cell_count %>% group_by(source) %>% mutate(total = sum(count), proportion = count / total)  # 计算每个细胞类型的占比
