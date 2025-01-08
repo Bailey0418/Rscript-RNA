@@ -29,6 +29,7 @@ plot1 <- FeatureScatter(tissue, feature1 = "nCount_RNA", feature2 = "percent.mt"
 plot2 <- FeatureScatter(tissue, feature1 = "nCount_RNA", feature2 = "nFeature_RNA",group.by = "orig.ident")
 plot3 <- plot1 + plot2
 ggsave("filter_cell_FeatureScatter.pdf", plot = plot3, width = 20, height = 10)
+
 #3.数据标准化
 tissue <- NormalizeData(tissue, normalization.method = "LogNormalize", scale.factor = 10000)
 tissue <- FindVariableFeatures(tissue, selection.method = "vst", nfeatures = 2000)
