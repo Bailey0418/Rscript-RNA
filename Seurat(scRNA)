@@ -84,12 +84,8 @@ tissue <- RenameIdents(tissue, new.cluster.ids)
 plot1 <- DimPlot(tissue, reduction = "umap", label = TRUE)
 ggsave("celltype_umap_DimPlot.pdf", plot = plot1, width = 10, height = 10)
 
- #绘制top基因热图
-plot1 <- DoHeatmap(tissue, features = valid_genes, group.by = "ident") +
-                   scale_fill_gradientn(colors = c("blue", "white", "red")) +
-                   theme_minimal() +
-                   labs(title = "Top 20 Differentially Expressed Genes")
-ggsave("cluster_top20_marker_heatmap.pdf", plot = plot1, width = 10, height = 10)
+ #绘制top基因热图(提取为矩阵再画图)
+
  #绘制细胞类型分组数据柱形图
 tissue$celltype <- Idents(tissue)
 cell_count <- tissue@meta.data %>% group_by(source, celltype) %>% summarise(count = n())  # 统计每个组合的数量
