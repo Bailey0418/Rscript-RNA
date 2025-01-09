@@ -123,7 +123,7 @@ plot1 <- ggplot(kegg_result,aes(x = GeneRatio,y = fct_reorder(Description, GeneR
                 theme_bw()#主题
 ggsave("KEGG_result.pdf", plot = plot1, width = 10, height = 10)
 #4.GO功能富集
-go_enrich<-clusterProfiler::enrichGO(gene = diff_entrez$ENTREZID,
+go_enrich <- clusterProfiler::enrichGO(gene = diff_entrez$ENTREZID,
                                      ont = 'all',#可选'BP','CC','MF' or 'all'
                                      keyType = "ENTREZID",
                                      OrgDb = org.Hs.eg.db,
