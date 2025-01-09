@@ -10,7 +10,7 @@ fastqc -t 6 -o out_path sample1_1.fq sample1_2.fq #conda运行，
 
 #4.读取并比对（STAR）
  #构建基因组索引
-STAR --runThreadN 6 --runMode genomeGenerate --genomeDir index_dir --genomeFastaFiles genome.fasta --sjdbGTFfile genome.gtf --sjdbOverhang 149
+STAR --runThreadN 6 --runMode genomeGenerate --genomeDir /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/STAR/index --genomeFastaFiles /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/genomeFastaFiles/Homo_sapiens.GRCh38.dna.primary_assembly.fa --sjdbGTFfile /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/sjdbGTFfile/Homo_sapiens.GRCh38.113.gtf --sjdbOverhang 149
  #--runThreadN：线程数；--runMode genomeGenerate：构建基因组索引；--genomeDir：索引目录。（index_dir一定要是存在的文件夹，需提前建好）；--genomeFastaFiles：基因组文件；--sjdbGTFfile：基因组注释文件；--sjdbOverhang：reads长度减1。
  #进行read比对
 STAR --twopassMode Basic --quantMode TranscriptomeSAM GeneCounts --runThreadN 6 --genomeDir index_dir --alignIntronMin 20 --alignIntronMax 50000 --outSAMtype BAM SortedByCoordinate --sjdbOverhang 149 --outSAMattrRGline ID:sample SM:sample PL:ILLUMINA --outFilterMismatchNmax 2 --outSJfilterReads Unique --outSAMmultNmax 1 --outFileNamePrefix out_prefix --outSAMmapqUnique 60 --readFilesCommand gunzip -c --readFilesIn seq1.fq.gz seq2.fq.gz
