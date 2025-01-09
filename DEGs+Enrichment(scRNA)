@@ -133,7 +133,7 @@ go_enrich <- clusterProfiler::enrichGO(gene = diff_entrez$ENTREZID,
 go_enrich <- DOSE::setReadable(go_enrich, OrgDb = org.Hs.eg.db, keyType = 'ENTREZID')#将RNTREZ转换为Symbol
 go_geo <- simplify(go_enrich, cutoff = 0.7, by = "p.adjust", select_fun = min)#去除冗余的GO term
 go_result <- go_geo@result
-go_result
+head(go_result)
 write.csv(go_result, "EPC_case_control_G0_result.csv")
 
  #结果可视化
