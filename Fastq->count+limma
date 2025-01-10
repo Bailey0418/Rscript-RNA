@@ -57,3 +57,34 @@ featureCounts -p -T 25 \
  #-o counts.txt：输出文件名，counts.txt 会包含计数结果。
 #7.只保留featurecounts.txt的【基因名】和【样本counts】
 cat featurecounts.txt | cut -f1,7- > counts.txt
+#8.count处理（R中）
+counts <- read.table("counts.txt", header = TRUE, row.names = 1)
+colnames(counts) <- c("control","HGM","siRNA1999","siRNA413")
+write.csv(counts,"counts_rename.csv")
+
+#9.limma分析差异（DESeq2要求每组至少有两个样本）
+counts_filtered <- counts[rowSums(counts > 10) > 0, ]
+counts_subset <- counts_filtered[, c("control","siRNA1999","siRNA413")]
+head(counts_subset)
+group <- factor(c("control", "siRNA","siRNA"))
+design <- model.matrix(~ 0 + group)
+colnames(design) <- levels(group)
+design
+library(limma)
+library(edgeR)
+v <- voom(counts_subset, design, plot = TRUE)#将矩阵log转化，防止极端值导致的无法拟合
+fit <- lmFit(v, design)
+contrast.matrix <- makeContrasts(siRNA - control, levels = design)# 设置对比，比较 HGM 和 control 组
+fit2 <- contrasts.fit(fit, contrast.matrix)
+fit2 <- eBayes(fit2)
+results <- topTable(fit2, coef = 1, adjust = "fdr", number = Inf)
+head(results)#正的 logFC 值 表示基因在siRNA组中表达上调，相对于 control 组。
+DEGs <- results[abs(results$logFC) > 1 & results$P.Value < 0.05, ]
+ #基因名转换
+library(org.Hs.eg.db)
+gene_symbols <- mapIds(org.Hs.eg.db, 
+                       keys = rownames(DEGs), 
+                       column = "SYMBOL", 
+                       keytype = "ENSEMBL", 
+                       multiVals = "first")
+table(duplicated(gene_symbols)) 
