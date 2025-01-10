@@ -9,27 +9,51 @@ fastqc -t 6 -o out_path sample1_1.fq sample1_2.fq #conda运行，
 #3.再次查看数据质量（忽略）
 
 #4.读取并比对（STAR；如果使用hisat2进行比对会生成SAM文件）
- #构建基因组索引，运行的star和构建索引的star版本要保持一致
-STAR --runThreadN 25 --runMode genomeGenerate 
-     --genomeDir /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/STAR/index 
-     --genomeFastaFiles /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/genomeFastaFiles/Homo_sapiens.GRCh38.fa 
-     --sjdbGTFfile /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/sjdbGTFfile/Homo_sapiens.GRCh38.113.gtf 
+ #（1）构建基因组索引，运行的star和构建索引的star版本要保持一致
+STAR --runThreadN 25 \
+     --runMode genomeGenerate \
+     --genomeDir /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/STAR/index \
+     --genomeFastaFiles /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/genomeFastaFiles/Homo_sapiens.GRCh38.fa \
+     --sjdbGTFfile /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/sjdbGTFfile/Homo_sapiens.GRCh38.113.gtf \
      --sjdbOverhang 149
- #--runThreadN：线程数；--runMode genomeGenerate：构建基因组索引；--genomeDir：索引目录。（index_dir一定要是存在的文件夹，需提前建好）；--genomeFastaFiles：基因组文件；--sjdbGTFfile：基因组注释文件；--sjdbOverhang：reads长度减1。
- #进行read比对
-STAR --twopassMode Basic --quantMode TranscriptomeSAM GeneCounts 
-     --runThreadN 25 --genomeDir index_dir --alignIntronMin 20 --alignIntronMax 50000 
-     --outSAMtype BAM SortedByCoordinate --sjdbOverhang 149 
-     --outSAMattrRGline ID:sample SM:sample PL:ILLUMINA --outFilterMismatchNmax 2 
-     --outSJfilterReads Unique --outSAMmultNmax 1 --outFileNamePrefix out_prefix 
-     --outSAMmapqUnique 60 --readFilesCommand gunzip -c 
-     --readFilesIn seq1.fq.gz seq2.fq.gz
- #--twopassMode Basic：使用two-pass模式进行reads比对。简单来说就是先按索引进行第一次比对，而后把第一次比对发现的新剪切位点信息加入到索引中进行第二次比对；--quantMode TranscriptomeSAM GeneCounts：将reads比对至转录本序列；--runThreadN：线程数；--genomeDir：索引目录；
- #--alignIntronMin：最短的内含子长度。（根据GTF文件计算）；--alignIntronMax：最长的内含子长度。（根据GTF文件计算）；--outSAMtype BAM SortedByCoordinate：输出BAM文件并进行排序；--sjdbOverhang：reads长度减1；--outSAMattrRGline：ID代表样本ID，SM代表样本名称，PL为测序平台。在使用GATK进行SNP Calling时同一SM的样本可以合并在一起；
- #--outFilterMismatchNmax：比对时允许的最大错配数；--outSJfilterReads Unique：对于跨越剪切位点的reads（junction reads)，只考虑跨越唯一剪切位点的reads；--outSAMmultNmax：每条reads输出比对结果的数量；--outFileNamePrefix：输出文件前缀；--outSAMmapqUnique 60：将uniquely mapping reads的MAPQ值调整为60，满足下游使用GATK进行分析的需要；
- #--readFilesCommand：对FASTQ文件进行操作；--readFilesIn：输入FASTQ文件的路径。
-
-#5.查看比对后的BAM文件（samtools-也可以将SAM文件转换为BAM文件）
-samtools view CK-1_Aligned.sortedByCoord.out.bam |head -n 5
-
-#6.BAM转化为count文件（R：featureCounts）
+#--runThreadN：线程数；--runMode genomeGenerate：构建基因组索引；--genomeDir：索引目录。（index_dir一定要是存在的文件夹，需提前建好）；--genomeFastaFiles：基因组文件；--sjdbGTFfile：基因组注释文件；--sjdbOverhang：reads长度减1。
+ #（2）计算内含子长度（R中：GenomicRanges和rtracklayer;不换参考基因组就不用重新计算了）
+library(GenomicRanges)
+library(rtracklayer)
+gtf_file <- "/mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/sjdbGTFfile/Homo_sapiens.GRCh38.113.gtf"
+gtf <- import(gtf_file)
+exons <- gtf[gtf$type == "exon"]
+head(exons)
+genes <- gtf[gtf$type == "gene"]
+introns <- setdiff(genes, exons)
+head(introns)
+intron_lengths <- width(introns)
+min_intron_length <- min(intron_lengths, na.rm = TRUE)
+max_intron_length <- max(intron_lengths, na.rm = TRUE)
+cat("最短内含子长度：", min_intron_length, "bp\n")
+cat("最长内含子长度：", max_intron_length, "bp\n")
+ #（3）进行read比对
+STAR \
+    --genomeDir /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/STAR/index \
+     --runThreadN 25 \
+    --readFilesIn /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/RawData/SiRNA1999_1.fq.gz /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/RawData/SiRNA1999_2.fq.gz \
+    --readFilesCommand zcat \
+    --outFileNamePrefix siRNA1999 \
+    --outSAMtype BAM SortedByCoordinate \
+    --outBAMsortingThreadN 25
+ #--runThreadN 设置线程数
+ #--runMode alignReads : 默认就是比对模式，可以不填写
+ #--genomeDir: 索引文件夹
+ #--readFilesIn FASTA/Q文件路径
+ #--readFilesCommand zcat: 如果输入格式是gz结尾，那么需要加上zcat, 否则会报错
+ #--outSAMtype: 输出SAM文件的格式，是否排序
+ #--outBAMsortingThreadN: SAM排序成BAM时调用线程数
+#6.BAM转化为count文件（featureCounts）
+featureCounts -p -T 25 \
+              -a /mnt/raid5/User/bailin/Document_of_match_and_annotation/Fastq/sjdbGTFfile/Homo_sapiens.GRCh38.113.gtf \
+              -o featurecounts.txt /mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250107/STAR/BAM/*.sortedByCoord.out.bam
+ #-T 8：使用 8 个线程 来加速处理。
+ #-a /path/to/annotation.gtf：指定 GTF 文件。
+ #-o counts.txt：输出文件名，counts.txt 会包含计数结果。
+#7.只保留featurecounts.txt的【基因名】和【样本counts】
+cat featurecounts.txt | cut -f1,7- > counts.txt
