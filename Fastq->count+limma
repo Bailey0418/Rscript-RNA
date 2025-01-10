@@ -63,6 +63,7 @@ colnames(counts) <- c("control","HGM","siRNA1999","siRNA413")
 write.csv(counts,"counts_rename.csv")
 
 #9.limma分析差异（DESeq2要求每组至少有两个样本）
+ #(1)计算差异
 counts_filtered <- counts[rowSums(counts > 10) > 0, ]
 counts_subset <- counts_filtered[, c("control","siRNA1999","siRNA413")]
 head(counts_subset)
@@ -71,7 +72,6 @@ design <- model.matrix(~ 0 + group)
 colnames(design) <- levels(group)
 design
 library(limma)
-library(edgeR)
 v <- voom(counts_subset, design, plot = TRUE)#将矩阵log转化，防止极端值导致的无法拟合
 fit <- lmFit(v, design)
 contrast.matrix <- makeContrasts(siRNA - control, levels = design)# 设置对比，比较 HGM 和 control 组
@@ -80,11 +80,8 @@ fit2 <- eBayes(fit2)
 results <- topTable(fit2, coef = 1, adjust = "fdr", number = Inf)
 head(results)#正的 logFC 值 表示基因在siRNA组中表达上调，相对于 control 组。
 DEGs <- results[abs(results$logFC) > 1 & results$P.Value < 0.05, ]
- #基因名转换
-library(org.Hs.eg.db)
-gene_symbols <- mapIds(org.Hs.eg.db, 
-                       keys = rownames(DEGs), 
-                       column = "SYMBOL", 
-                       keytype = "ENSEMBL", 
-                       multiVals = "first")
-table(duplicated(gene_symbols)) 
+ #（2）基因名转换
+source("/mnt/raid5/User/wangmingwei/Projects/1FUNCTION/exp_idchange.R")
+DEGs_symbol <- exp_idchange(DEGs)
+head(DEGs_symbol)
+write.csv(DEGs_symbol,"DEGs_symbol.csv")
