@@ -176,4 +176,4 @@ plot1 <- DimPlot(tissue, label = T, reduction = "tsne", pt.size = 1, cols = cell
         axis.ticks.y = element_blank(),
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank())
-ggsave("cluster_tsne.pdf", plot = plot1, width = 10, height = 10)
+ggsave("cluster_tsne.pdf", plot = plot1, width = 5, height = 5)
