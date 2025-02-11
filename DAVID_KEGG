@@ -1,0 +1,69 @@
+#1.DAVID结果整理
+KEGG <- read.csv("/mnt/raid5/User/bailin/project/240701SDUTCM.DiabeticFeet/250205/KEGG_result_1.csv")
+library(magrittr)
+library(tidyr)
+KEGG <- KEGG %>%
+  separate(Term, into = c("Term", "Description"), sep = ":", extra = "merge")
+head(KEGG)
+
+#2.bubble可视化
+library(ggplot2)
+library(stringr)
+KEGG <- KEGG[KEGG$PValue<0.05,]
+KEGG <- KEGG[order(KEGG$Fold.Enrichment, KEGG$Count, KEGG$PValue), ]
+KEGG$Term <- factor(KEGG$Term, levels= KEGG$Term)
+
+bubble_plot1 <- ggplot(data=KEGG, aes(y= Term,x=Fold.Enrichment,size=Count,color=PValue))+
+                       geom_point(shape=16)+
+                       scale_color_gradient(low="#FC3302",high="#059AFD")+
+                       scale_size_area(max_size = 15) +labs(x="Fold Enrichment", y="")+
+                       xlim(min(KEGG$Fold.Enrichment), max(KEGG$Fold.Enrichment))+
+                       guides(color= guide_colourbar(order = 1),size = guide_legend(order = 2))+
+                       theme_bw(base_size=12)+
+                       theme(text=element_text(family="serif"),panel.background = element_blank(),
+                             panel.grid=element_line(size=.1,color= "grey50"),
+                             panel.grid.major=element_line(size=.1,color= "grey50"),
+                             legend.text = element_text(size = 16),
+                             legend.title = element_text(size = 18),
+                             axis.text.x = element_text(face = "bold", color = "black", size = 16),
+                             axis.text.y = element_text(face = "bold", color = "black", size = 18),
+                             axis.title.x = element_text(face = "bold", color = "black", size = 20),
+                             axis.title.y = element_text(face = "bold", color = "black", size = 20))
+ggsave('KEGG_bubble.pdf', bubble_plot1,width=320,height=220,units='mm', dpi=1200)
+
+#3.pathway map
+library(tidygraph)
+library(dplyr)
+library(igraph)
+library(ggkegg)
+library(ggfx)
+library(cols4all)
+####直接导入DESeq2结果
+使用ggraph包可视化KEGG通路，并在各节点映射差异分析结果数值(如Log2FC、adjustp等)；
+g <- pathway('hsa04110') %>% mutate(Log2FC = assign_deseq2(res),
+                                    padj = assign_deseq2(res, column = 'padj'),
+                                    converted_name = convert_id('hsa'))
+
+##将log2FC值映射到通路各节点：
+c4a_gui() #筛选/自定义色板
+p1 <- ggraph(g, layout = 'manual', x = x, y = y) + 
+  geom_edge_parallel(width = 0.5, 
+                     arrow = arrow(length = unit(1, 'mm')), 
+                     start_cap = square(1, 'cm'),
+                     end_cap = square(1.5, 'cm'), 
+                     aes(color = subtype_name)) +
+  geom_node_rect(aes(fill = Log2FC, #log2FC
+                     filter = type == 'gene'), 
+                 color = 'black') +
+  ggfx::with_outer_glow(geom_node_text(aes(label = converted_name, 
+                                           filter = type != 'group'), 
+                                       size = 3), 
+                        colour = 'white', expand = 1) +
+  scale_fill_continuous_c4a_div('benedictus', reverse = T) +
+  scale_edge_color_manual(values = rev(c4a('pastel', 11))) +
+  theme_void()
+p1
+####
+int <- c("CD40","CXCL8","CXCL1","CXCL3","BIRC3")
+p1 <- highlight_entities('hsa04064', int, fill_color = 'red')
+ggsave("hsa04064.pdf", p1, width=320, height=220, units='mm', dpi=1200)
