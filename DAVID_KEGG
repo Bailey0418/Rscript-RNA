@@ -13,7 +13,7 @@ KEGG <- KEGG[KEGG$PValue<0.05,]
 KEGG <- KEGG[order(KEGG$Fold.Enrichment, KEGG$Count, KEGG$PValue), ]
 KEGG$Term <- factor(KEGG$Term, levels= KEGG$Term)
 
-bubble_plot1 <- ggplot(data=KEGG, aes(y= Term,x=Fold.Enrichment,size=Count,color=PValue))+
+bubble_plot1 <- ggplot(data=KEGG[c(1:20),], aes(y= Term,x=Fold.Enrichment,size=Count,color=PValue))+
                        geom_point(shape=16)+
                        scale_color_gradient(low="#FC3302",high="#059AFD")+
                        scale_size_area(max_size = 15) +labs(x="Fold Enrichment", y="")+
