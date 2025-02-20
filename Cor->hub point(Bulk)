@@ -29,7 +29,7 @@ write.csv(corresult1,file = "LUSC_lnc_corresult7.csv")
 #2.寻找共表达网络的hub节点
 ###寻找网络中的HUB节点
 library(igraph)
-g<-graph_from_data_frame(THCA_web,directed = F)
+g<-graph_from_data_frame(cor,directed = F)#前两列为基因
 
 #（1）点度中心度
 g1<-degree(g)
