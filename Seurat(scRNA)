@@ -68,7 +68,6 @@ plot1 <- DimPlot(tissue, reduction = "umap",group.by = "sample", label = F,repel
 plot2 <- DimPlot(tissue, reduction = "umap", label = T,repel = TRUE)
 plot3 <- plot1 + plot2
 ggsave("RunHarmony_umap_DimPlot.pdf", plot = plot3, width = 20, height = 10)
-saveRDS(tissue,"tissue.rds")
 
 #5.确定分辨率,数据降维
 library(clustree)
@@ -89,6 +88,7 @@ write.csv(markers, "all_markers.csv")
 library(dplyr)
 top100 <- markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
 write.csv(top100,"cluster_top100_marker.csv")
+saveRDS(tissue,"scRNA_wt.rds")
 
 #7.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
 new.cluster.ids <- c("Monocyte", "Monocyte","T cell", "T cell","T cell","T cell","Monocyte","B cell","Monocyte","Monocyte","T cell","Monocyte","T cell",
