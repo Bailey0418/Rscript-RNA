@@ -5,8 +5,10 @@ library(preprocessCore)
 library(parallel)
 
 source("Cibersort.R")
-expr <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/mRNA_count.csv", row.names = 1)
-expr <- 2^expr - 1
+#需要FPKM表达谱
+expr <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/mRNA_FPKM.csv", row.names = 1)
+#如果标准化了
+#expr <- 2^expr - 1
 expr <- cbind(RowName = rownames(expr), expr)
 rownames(expr) <- NULL
 colnames(expr)[1] <- "Gene Symbol"
