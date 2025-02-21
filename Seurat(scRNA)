@@ -87,7 +87,7 @@ tissue@meta.data <- tissue@meta.data[, c(1:6,8,10)]
 markers <- FindAllMarkers(tissue, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 library(dplyr)
 top50 <- markers %>% group_by(cluster) %>% top_n(n = 50, wt = avg_log2FC)
-write.csv(top20,"cluster_top50_marker.csv")
+write.csv(top50,"cluster_top50_marker.csv")
 
 #7.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
 new.cluster.ids <- c("Monocyte", "Monocyte","T cell", "T cell","T cell","T cell","Monocyte","B cell","Monocyte","Monocyte","T cell","Monocyte","T cell",
