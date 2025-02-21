@@ -58,6 +58,8 @@ dev.off()
 
 ###免疫细胞比例与marker基因的相关性
 genes <- c("TPH1","MAOB","TDO2","KMO","KYNU","CYP1B1")
+a <- read.table("CIBERSORT-Results.txt",sep = "\t",row.names = 1,check.names = F,header = T)
+a <- a[,1:22]
 expr_CA <- read.csv("/mnt/raid5/User/bailin/project/240909Carotid.plaque/data/GSE43292/preprocessing/exp_norm.csv", row.names = 1)
 genes_expr <- as.data.frame(t(expr_CA[rownames(expr_CA) %in% genes,]))
 genes_expr <- genes_expr[match(rownames(a),rownames(genes_expr)),]
@@ -68,8 +70,6 @@ library(tidyr)
 library(tibble)
 library(dplyr)
 cor_res <- correlate(genes_expr, a ,method = "spearman")
-cor_res <- as.data.frame(cor_res)
-cor_res <- cor_res[, -(23:25)]
 
 df_r <- cor_res$r %>%
         as.data.frame() %>%
