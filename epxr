@@ -1,0 +1,22 @@
+#表达谱提取
+library(readxl)
+library(dplyr)
+data <- read_excel("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/lncRNA_report/summary/7.lncRNA/2.lncExpression/1_lncRNA_fpkm_expression.xlsx")
+colnames(data)
+#去掉不想要的样本
+data <- data[,-c(25,28,35,38,42:61)]
+#去掉没有gene_name的基因
+data_filtered <- data %>% filter(!is.na(gene_name) & gene_name != "NA")
+#计算均值
+data_aggregated <- data_filtered %>%
+  group_by(gene_name) %>%
+  summarise(across(starts_with("FPKM")))
+#合并相同基因名的行
+data_unique <- data_aggregated %>%
+  group_by(gene_name) %>%
+  summarise(across(everything(), mean))
+#gene_name列作为行名
+data_expression <- as.data.frame(data_unique)
+rownames(data_expression) <- data_expression$gene_name
+data_expression <- data_expression[, -1]
+write.csv(data_expression,"lncRNA_FPKM.csv")
