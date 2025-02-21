@@ -15,9 +15,9 @@ counts2FPKM <- function(count=count, efflength=efflen){
 FPKM2TPM <- function(fpkm){     
   fpkm/sum(fpkm)*1e6   
   } 
-tpm <- as.data.frame(apply(counts,2,counts2TPM))
+tpm <- as.data.frame(apply(count,2,counts2TPM))
 colSums(tpm) 
-fpkm <- as.data.frame(apply(counts,2,counts2FPKM))
+fpkm <- as.data.frame(apply(count,2,counts2FPKM))
 colSums(fpkm) 
-tpm0 <- as.data.frame(apply(counts,2,FPKM2TPM))
+tpm0 <- as.data.frame(apply(count,2,FPKM2TPM))
 colSums(tpm0)
