@@ -1,0 +1,20 @@
+#TPM (Transcripts Per Kilobase Million)  每千个碱基的转录每百万映射读取的Transcripts 
+counts2TPM <- function(count=count, efflength=efflen){    
+  RPK <- count/(efflength/1000)   #每千碱基reads (reads per kilobase) 长度标准化     
+  PMSC_rpk <- sum(RPK)/1e6        #RPK的每百万缩放因子 (“per million” scaling factor ) 深度标准化     
+  RPK/PMSC_rpk                       
+  }                    
+#FPKM/RPKM (Fragments/Reads Per Kilobase Million )  每千个碱基的转录每百万映射读取的Fragments/reads 
+#RPKM与FPKM分别针对单端与双端测序而言，计算公式是一样的 
+counts2FPKM <- function(count=count, efflength=efflen){     
+  PMSC_counts <- sum(count)/1e6   #counts的每百万缩放因子 (“per million” scaling factor) 深度标准化     
+  FPM <- count/PMSC_counts        #每百万reads/Fragments (Reads/Fragments Per Million) 长度标准化     
+  FPM/(efflength/1000)                                       
+  } 
+#FPKM与TPM的转化 
+FPKM2TPM <- function(fpkm){     
+  fpkm/sum(fpkm)*1e6   
+  } 
+tpm <- as.data.frame(apply(counts,2,counts2TPM)) colSums(tpm) 
+fpkm <- as.data.frame(apply(counts,2,counts2FPKM)) colSums(fpkm) 
+tpm0 <- as.data.frame(apply(counts,2,FPKM2TPM)) colSums(tpm0)
