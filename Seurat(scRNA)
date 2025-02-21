@@ -70,13 +70,26 @@ plot3 <- plot1 + plot2
 ggsave("RunHarmony_umap_DimPlot.pdf", plot = plot3, width = 20, height = 10)
 saveRDS(tissue,"tissue.rds")
 
-#5.计算marker基因并绘制热图
+#5.确定分辨率,数据降维
+library(clustree)
+library(patchwork)
+seq <- seq(0.1,1,by = 0.1)
+for(res in seq){
+  tissue <- FindClusters(tissue, resolution = res)
+}
+p1 <- clustree(tissue,prefix = "RNA_snn_res.") + coord_flip()
+ggsave("all_clusters.pdf", plot = p1, width = 30, height = 10)#图片中观察从右开始第一次交织的箭头的右面的点为分辨率
+tissue <- FindClusters(tissue, resolution = 0.2)
+#只保留指定分辨率
+tissue@meta.data <- tissue@meta.data[, c(1:6,8,10)]
+
+#6.计算marker基因并绘制热图
 markers <- FindAllMarkers(tissue, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 library(dplyr)
-top20 <- markers %>% group_by(cluster) %>% top_n(n = 20, wt = avg_log2FC)
-write.csv(top20,"cluster_top20_marker.csv")
+top50 <- markers %>% group_by(cluster) %>% top_n(n = 50, wt = avg_log2FC)
+write.csv(top20,"cluster_top50_marker.csv")
 
-#6.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
+#7.细胞注释（一般使用cellmarker注释，即手动注释后整理输入注释信息）
 new.cluster.ids <- c("Monocyte", "Monocyte","T cell", "T cell","T cell","T cell","Monocyte","B cell","Monocyte","Monocyte","T cell","Monocyte","T cell",
                      "Basophil","Monocyte","Megakaryocyte","T cell","B cell","Monocyte","T cell","T cell","T cell","Neutrophil","B cell")#按顺序依次输入
 names(new.cluster.ids) <- levels(tissue)
@@ -128,7 +141,7 @@ saveRDS(tissue,"tissue.rds")
 tissue_EC <- subset(tissue, idents = "Endothelial cell")
 saveRDS(tissue_EC, "tissue_EC.rds")
 
-#7.再次注释时查看每种marker方案的细胞数，选择较好的marker方案
+#8.再次注释时查看每种marker方案的细胞数，选择较好的marker方案
 tissue <- readRDS("tissue_EC.rds")
 cellsub <- subset(tissue@meta.data, group=="D0")
 disease <- subset(tissue, cells=rownames(cellsub))
@@ -150,7 +163,7 @@ ggsave("DotPlot.pdf", plot = plot1, width = 10, height = 10)
 plot2 <- FeaturePlot(tissue, features = "CD3D") 
 ggsave("CD3D_FeaturePlot.pdf", plot = p2, width = 10, height = 10)
 
-#8.subtype注释
+#9.subtype注释
 new.cluster.ids <- c('EC','other','other','other','other','other','other','other','other',
                      'EC','ECFC','other','ECFC','EPC','EC')
 names(new.cluster.ids) <- levels(tissue1)
@@ -160,7 +173,7 @@ tissue_3_ECs <- subset(tissue,idents = c('EPC','ECFC','EC'))
 table(Idents(tissue_3_ECs))
 saveRDS(tissue_3_ECs,"tissue_3ECs.rds")
 
-#9.美化版tsne图绘制代码
+#10.美化版tsne图绘制代码
 Idents(tissue) <- tissue$RNA_snn_res.0.5
 tissue <- RunTSNE(tissue, dims = 1:30,reduction.name = "tsne")
 library(RColorBrewer)
