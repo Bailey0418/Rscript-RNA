@@ -41,7 +41,7 @@ ggsave("Normalize_VariableFeaturePlot.pdf", plot = plot3, width = 20, height = 1
 
 all.genes <- rownames(tissue)
 tissue <- ScaleData(tissue, features = all.genes)
-tissue <- RunPCA(tissue, features = VariableFeatures(object = tissue))
+tissue <- RunPCA(tissue, features = VariableFeatures(object = tissue))#求批次需要PCA结果
 plot4 <- VizDimLoadings(tissue, dims = 1:2, reduction = "pca")
 ggsave("RunPCA_VizDimLoadings.pdf", plot = plot4, width = 20,height = 10)
 plot5 <- DimPlot(tissue, reduction = "pca", group.by = "orig.ident")
