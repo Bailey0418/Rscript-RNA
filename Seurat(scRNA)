@@ -191,3 +191,68 @@ plot1 <- DimPlot(tissue, label = T, reduction = "tsne", pt.size = 1, cols = cell
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank())
 ggsave("cluster_tsne.pdf", plot = plot1, width = 10, height = 10)
+
+#11.个性化分析-同种细胞类型在condition之间求差异基因并作图展示
+#（1）筛选差异表达基因
+library(Seurat)
+tissue_HC <- as.Seurat(tissue_HC)#导入数据或生成数据
+# 设置 group 为 ident（用于分组）
+Idents(tissue_HC) <- "condition"
+
+# 计算差异表达基因（cre vs wt）
+deg_results <- FindMarkers(
+  tissue_HC,
+  ident.1 = "cre",  # 组1，实验组
+  ident.2 = "wt",   # 组2，对照组
+  logfc.threshold = 0.25,  # 只保留logFC > 0.25的基因
+  min.pct = 0.1,          # 只考虑在至少10%细胞中表达的基因
+  test.use = "wilcox"     # Wilcoxon rank-sum test
+)
+head(deg_results)
+write.csv(deg_results, "DEG_cre_vs_wt.csv")
+（2）差异基因做火山图（Volcano Plot）
+library(ggplot2)
+
+deg_results$gene <- rownames(deg_results)
+deg_results$threshold <- ifelse(deg_results$p_val_adj < 0.05 & abs(deg_results$avg_log2FC) > 0.25, 
+                                ifelse(deg_results$avg_log2FC > 0.25, "Up", "Down"), "Not Sig")
+
+p1 <- ggplot(deg_results, aes(x = avg_log2FC, y = -log10(p_val_adj), color = threshold)) +
+             geom_point(alpha = 0.6, size = 2) +
+             scale_color_manual(values = c("Up" = "red", "Down" = "blue", "Not Sig" = "grey")) +
+             theme_minimal() +
+             labs(title = "Volcano Plot of DEGs", x = "log2 Fold Change", y = "-log10 Adjusted p-value")
+ggsave(""Volcano Plot.pdf",plot = p1, width = 10, height = 10)
+(2)差异基因做热图（Heatmap）
+library(pheatmap)
+# 获取差异基因的表达矩阵
+expression_matrix <- GetAssayData(tissue_HC, assay = "RNA", slot = "data")[sig_genes, ]
+# 提取 condition 信息并排序
+condition_info <- data.frame(condition = tissue_HC$condition)
+rownames(condition_info) <- colnames(expression_matrix)
+# 根据 condition 排序细胞列
+sorted_cells <- rownames(condition_info)[order(condition_info$condition)]
+expression_matrix <- expression_matrix[, sorted_cells]
+condition_info <- condition_info[sorted_cells, , drop = FALSE]
+# 颜色映射
+annotation_colors <- list(condition = c("cre" = "red", "wt" = "blue"))
+# 限制表达值范围（clip 到 0-5）
+expression_matrix[expression_matrix > 5] <- 5
+expression_matrix[expression_matrix < 0] <- 0
+# 自定义颜色梯度（黄色 -> 紫色）
+color_palette <- colorRampPalette(c("white", "lightcoral"))(100)
+# 绘制热图
+p2 <- pheatmap(expression_matrix,
+               annotation_col = condition_info,  # 按 condition 进行注释
+               annotation_colors = annotation_colors,  # 自定义颜色
+               cluster_rows = TRUE,  # 对基因进行聚类
+               cluster_cols = FALSE,  # 细胞不聚类，保持 condition 顺序
+               scale = "none",  # 不进行标准化，保持原始表达值
+               show_colnames = FALSE,  # 不显示细胞名（可选）
+               show_rownames = TRUE,   # 显示基因名
+               breaks = seq(0, 5, length.out = 100),  # 限制表达值范围
+               color = color_palette)  # 使用黄色到紫色的渐变色
+ggsave("Heatmap_abs_log2FC_4.pdf",plot = p2, width = 10, height = 10)
+(3)挑选差异基因做小提琴图
+p3 <- VlnPlot(tissue_HC, features = c("Pou4f3", "Tmc1","Myo7a"), group.by = "condition", pt.size = 0)
+ggsave("Violin Plot.pdf",plot = p3, width = 15, height = 5)#记得改图片大小
