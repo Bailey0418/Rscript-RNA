@@ -67,3 +67,29 @@ p1
 int <- c("CD40","CXCL8","CXCL1","CXCL3","BIRC3")
 p1 <- highlight_entities('hsa04064', int, fill_color = 'red')
 ggsave("hsa04064.pdf", p1, width=320, height=220, units='mm', dpi=1200)
+
+#4.批量获得KEGG通路对应的基因集合
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(KEGGREST)
+kegg_terms <- c("hsa04218","hsa04115","hsa04110")
+gene_list_kegg <- list()
+
+for (kegg in kegg_terms) {
+  # 使用 keggREST 包从 KEGG 数据库获取基因
+  kegg_genes <- KEGGREST::keggGet(kegg)[[1]]$GENE
+  # 提取 KEGG 基因 ID
+  kegg_gene_ids <- gsub(".*:(.*)", "\\1", kegg_genes)
+  # 将 KEGG 基因 ID 转换为基因符号
+  gene_symbols <- mapIds(org.Hs.eg.db, keys = kegg_gene_ids, keytype = "ENTREZID", column = "SYMBOL")
+  # 移除 NA 值（那些没有找到对应符号的基因）
+  gene_symbols <- na.omit(gene_symbols)
+  # 将基因符号保存到列表中
+  gene_list_kegg[[kegg]] <- gene_symbols
+}
+
+unique_kegg_genes <- unique(unlist(gene_list_kegg))
+# 输出基因数和前几个基因
+cat("去重后的基因数量:", length(unique_kegg_genes), "\n")
+head(unique_kegg_genes)
+write.csv(unique_kegg_genes, "KEGG_unique_genes.csv", row.names = FALSE)
