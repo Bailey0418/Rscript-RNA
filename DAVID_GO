@@ -8,12 +8,7 @@ head(GO)
 
 #2.bubble可视化
 library(ggplot2)
-top_GO <- GO %>%
-  arrange(PValue) %>%
-  group_by(Category) %>%
-  slice_min(PValue, n = 10) %>%  # 每个类别取P值最小的前10项
-  ungroup()
-
+top_GO <- GO[which(GO$PValue<0.05),]
 top_GO <- top_GO %>%
   mutate(Category = recode(Category,
                            'GOTERM_BP_DIRECT' = 'BP',
