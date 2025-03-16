@@ -30,3 +30,24 @@ p2 <- ggplot(top_GO, aes(x = GeneRatio, y = fct_reorder(Description, Count)))+ #
                guides(fill = guide_colorbar(reverse = T,order = 1))+
                theme_bw()#主题
 ggsave("GO_bubble.pdf",p2,width = 15,height = 9)
+
+#3.批量获得GO术语对应的基因集合
+library(clusterProfiler)
+library(org.Hs.eg.db) 
+go_terms <- c("GO:0001525", "GO:0060055", "GO:0061042", "GO:0101023", "GO:2000772","GO:0090398","GO:2000774","GO:2000773") 
+gene_list <- list()
+for (go in go_terms) {
+  go_genes <- AnnotationDbi::select(
+    org.Hs.eg.db,
+    keys = go,
+    keytype = "GO",
+    columns = "SYMBOL"
+  )$SYMBOL
+  
+  gene_list[[go]] <- go_genes
+}
+
+unique_genes <- unique(unlist(gene_list))
+cat("去重后的基因数量:", length(unique_genes), "\n")
+head(unique_genes)
+write.csv(unique_genes, "GO_unique_genes.csv", row.names = FALSE)
