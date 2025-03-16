@@ -1,0 +1,6 @@
+#1.差异表达基因绘制火山图
+library(EnhancedVolcano)
+library(ggplot2)
+DEG <- read.csv("DEG.csv",row.names = 1)
+p1 <- EnhancedVolcano(DEG, lab = rownames(DEG), x = 'logFC', y = 'P.Value', pCutoff = 0.05, FCcutoff = 0.5)
+ggsave("mRNA_DEGs.pdf",p1,width = 10,height = 10)
