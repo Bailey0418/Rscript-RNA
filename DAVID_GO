@@ -8,6 +8,8 @@ head(GO)
 
 #2.bubble可视化
 library(ggplot2)
+library(dplyr)
+library(forcats)
 top_GO <- GO[which(GO$PValue<0.05),]
 top_GO <- top_GO %>%
   mutate(Category = recode(Category,
