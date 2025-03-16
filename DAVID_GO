@@ -1,0 +1,32 @@
+#1.DAVID结果整理
+GO <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/03Enrich/GO.csv")
+library(magrittr)
+library(tidyr)
+GO <- GO %>%
+  separate(Term, into = c("Term", "Description"), sep = "~", extra = "merge")
+head(GO)
+
+#2.bubble可视化
+library(ggplot2)
+top_GO <- GO %>%
+  arrange(PValue) %>%
+  group_by(Category) %>%
+  slice_min(PValue, n = 10) %>%  # 每个类别取P值最小的前10项
+  ungroup()
+
+top_GO <- top_GO %>%
+  mutate(Category = recode(Category,
+                           'GOTERM_BP_DIRECT' = 'BP',
+                           'GOTERM_CC_DIRECT' = 'CC',
+                           'GOTERM_MF_DIRECT' = 'MF'))
+top_GO$ONTOLOGY <- top_GO$Category
+top_GO$GeneRatio <- top_GO$Count / top_GO$Pop.Hits
+top_GO$Description <- fct_reorder(top_GO$Description, top_GO$PValue)
+p2 <- ggplot(top_GO, aes(x = GeneRatio, y = fct_reorder(Description, Count)))+ #将term顺序按照GeneRatio进行排序
+               geom_point(aes(size = Count, fill = PValue), shape = 21, color = 'black')+ #分面
+               facet_grid(ONTOLOGY~., scale = 'free_y', space = 'free_y')+
+               scale_fill_gradient(low = '#E27371', high = '#5D82A7')+ #修改气泡图颜色
+               labs(title = 'GO Enrichment', y = 'GO term', x = 'GeneRatio')+ #标题修改
+               guides(fill = guide_colorbar(reverse = T,order = 1))+
+               theme_bw()#主题
+ggsave("GO_bubble.pdf",p2,width = 15,height = 9)
