@@ -37,12 +37,9 @@ library(ggpubr)
 p1 <- ggplot(expr_merged, aes(x = Group, y = Expression, fill = Group)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.7) +
   geom_jitter(width = 0.2, size = 0.5, alpha = 0.6) +  # 加入散点更直观
-  facet_wrap(~Gene, scales = "free_y", ncol = 6) +     # 每个基因一个小图
+  facet_wrap(~Gene, scales = "free_y", ncol = 7) +     # 每个基因一个小图
   scale_fill_manual(values = c("normal" = "lightblue", "case" = "lightcoral")) +
-  stat_compare_means(aes(label = ..p.signif..), 
-                     method = "wilcox.test", 
-                     comparisons = list(c("normal", "case")), 
-                     label.y.npc = "top", size = 4) +   # 添加显著性标注
+  stat_compare_means(method = "t.test", label = "p.signif") +  # 添加显著性标注
   theme_bw() +
   labs(title = "Expression of Selected Genes", y = "Expression Level", x = "Group") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
