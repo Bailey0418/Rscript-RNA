@@ -29,7 +29,7 @@ bubble_plot1 <- ggplot(data=KEGG, aes(y= Description,x=Fold.Enrichment,size=Coun
                              axis.text.y = element_text(face = "bold", color = "black", size = 18),
                              axis.title.x = element_text(face = "bold", color = "black", size = 20),
                              axis.title.y = element_text(face = "bold", color = "black", size = 20))
-ggsave('KEGG_bubble.pdf', bubble_plot1,width=320,height=220,units='mm', dpi=1200)
+ggsave('KEGG_bubble.pdf', bubble_plot1,width=12,height=9)
 
 #3.pathway map
 library(tidygraph)
