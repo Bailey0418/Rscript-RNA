@@ -15,18 +15,24 @@ top_GO <- top_GO %>%
   mutate(Category = recode(Category,
                            'GOTERM_BP_DIRECT' = 'BP',
                            'GOTERM_CC_DIRECT' = 'CC',
-                           'GOTERM_MF_DIRECT' = 'MF'))
-top_GO$ONTOLOGY <- top_GO$Category
-top_GO$GeneRatio <- top_GO$Count / top_GO$Pop.Hits
-top_GO$Description <- fct_reorder(top_GO$Description, top_GO$PValue)
+                           'GOTERM_MF_DIRECT' = 'MF')) %>%
+  mutate(GeneRatio = Count / Pop.Hits)
+
+# 按照GeneRatio排序，选择每个Category的前五个GO term
+top_GO <- top_GO %>%
+  group_by(Category) %>%
+  top_n(5, wt = GeneRatio) %>%
+  ungroup() %>%
+  mutate(Description = fct_reorder(Description, GeneRatio))
+
 p2 <- ggplot(top_GO, aes(x = GeneRatio, y = fct_reorder(Description, Count)))+ #将term顺序按照GeneRatio进行排序
                geom_point(aes(size = Count, fill = PValue), shape = 21, color = 'black')+ #分面
-               facet_grid(ONTOLOGY~., scale = 'free_y', space = 'free_y')+
+               facet_grid(Category~., scale = 'free_y', space = 'free_y')+
                scale_fill_gradient(low = '#E27371', high = '#5D82A7')+ #修改气泡图颜色
                labs(title = 'GO Enrichment', y = 'GO term', x = 'GeneRatio')+ #标题修改
                guides(fill = guide_colorbar(reverse = T,order = 1))+
                theme_bw()#主题
-ggsave("GO_bubble.pdf",p2,width = 15,height = 9)
+ggsave("GO_bubble.pdf",p2,width = 12,height = 9)
 
 #3.批量获得GO术语对应的基因集合
 library(clusterProfiler)
