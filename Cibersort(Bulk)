@@ -48,10 +48,10 @@ library(ggsci)
 library(tidyr)
 library(ggpubr)
 b <- gather(a,key=CIBERSORT,value = Proportion,-c(group,sample))
-pdf("cibersort.pdf",width = 15,height = 8)
+pdf("cibersort.pdf",width = 10,height = 4)
 ggboxplot(b, x = "CIBERSORT", y = "Proportion",fill = "group")+
           stat_compare_means(aes(group = group),method = "wilcox.test",label = "p.signif",
-          symnum.args=list(cutpoints = c(0, 0.001, 0.01, 0.05, 1), symbols = c("***", "**", "*", "ns")))+
+          symnum.args=list(cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("****", "***", "**", "*", "ns")))+
           theme(text = element_text(size=10),axis.text.x = element_text(angle=45, hjust=1)+
           scale_fill_manual(values = c("normal" = "lightblue", "case" = "lightcoral")))
 dev.off()
