@@ -13,23 +13,13 @@ KEGG <- KEGG[KEGG$PValue<0.05,]
 KEGG <- KEGG[order(KEGG$Fold.Enrichment, KEGG$Count, KEGG$PValue), ]
 KEGG$Term <- factor(KEGG$Term, levels= KEGG$Term)
 #KEGG <- KEGG[c(1:20),]
-bubble_plot1 <- ggplot(data=KEGG, aes(y= Description,x=Fold.Enrichment,size=Count,color=PValue))+
-                       geom_point(shape=16)+
-                       scale_color_gradient(low="#FC3302",high="#059AFD")+
-                       scale_size_area(max_size = 15) +labs(x="Fold Enrichment", y="")+
-                       xlim(min(KEGG$Fold.Enrichment), max(KEGG$Fold.Enrichment))+
-                       guides(color= guide_colourbar(order = 1),size = guide_legend(order = 2))+
-                       theme_bw(base_size=12)+
-                       theme(text=element_text(family="serif"),panel.background = element_blank(),
-                             panel.grid=element_line(size=.1,color= "grey50"),
-                             panel.grid.major=element_line(size=.1,color= "grey50"),
-                             legend.text = element_text(size = 16),
-                             legend.title = element_text(size = 18),
-                             axis.text.x = element_text(face = "bold", color = "black", size = 16),
-                             axis.text.y = element_text(face = "bold", color = "black", size = 18),
-                             axis.title.x = element_text(face = "bold", color = "black", size = 20),
-                             axis.title.y = element_text(face = "bold", color = "black", size = 20))
-ggsave('KEGG_bubble.pdf', bubble_plot1,width=12,height=9)
+p2 <- ggplot(KEGG, aes(x = Fold.Enrichment, y = fct_reorder(Description, Count))) +
+  geom_point(aes(size = Count, fill = PValue), shape = 21, color = 'black') +  # 点的大小和颜色
+  scale_fill_gradient(low = '#E27371', high = '#5D82A7') +  # 颜色渐变
+  labs(title = 'KEGG Pathway Enrichment', y = 'KEGG Pathway', x = 'GeneRatio') +  # 标签
+  guides(fill = guide_colorbar(reverse = TRUE, order = 1)) +  # 图例
+  theme_bw()  # 主题
+ggsave('KEGG_bubble.pdf', p2,width=12,height=9)
 
 #3.pathway map
 library(tidygraph)
