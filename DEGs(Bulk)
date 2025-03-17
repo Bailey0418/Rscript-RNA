@@ -1,11 +1,28 @@
-#1.差异表达基因绘制火山图
+#1.DESeq2使用原始count矩阵计算差异表达基因的基本流程
+library(DESeq2)
+count <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/mRNA_count.csv", row.names = 1)
+colData <- data.frame(
+  condition = factor(c("control", "control", "control", "control", "control", "control", "control", "control",
+                       "disease", "disease", "disease", "disease", "disease", "disease", "disease", "disease")),
+  row.names = colnames(count)) # 确保列名与元数据框的行名一致
+
+dds <- DESeqDataSetFromMatrix(countData = count, colData = colData, design = ~ condition)
+dds <- DESeq(dds)
+res <- results(dds)
+head(res)
+write.csv(as.data.frame(res), file = "DESeq2_results.csv")
+
+significant_genes <- res[which(res$pvalue < 0.05 & abs(res$log2FoldChange) > 0.5), ]
+dim(significant_genes)
+write.csv(as.data.frame(significant_genes), file = "significant_mRNA.csv")
+#2.差异表达基因绘制火山图
 library(EnhancedVolcano)
 library(ggplot2)
-DEG <- read.csv("DEG.csv",row.names = 1)
-p1 <- EnhancedVolcano(DEG, lab = rownames(DEG), x = 'logFC', y = 'P.Value', pCutoff = 0.05, FCcutoff = 0.5)
+DEG <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/02DESeq2/DESeq2_mRNA.csv",row.names = 1)
+p1 <- EnhancedVolcano(DEG, lab = rownames(DEG), x = 'log2FoldChange', y = 'pvalue', pCutoff = 0.05, FCcutoff = 0.5)
 ggsave("mRNA_DEGs.pdf",p1,width = 10,height = 10)
 
-#2.特定基因绘制表达箱线图
+#3.特定基因绘制表达箱线图
 genes <- c("GENE1", "GENE2", "GENE3", "GENE4", "GENE5","GENE6", "GENE7", "GENE8", "GENE9", "GENE10", "GENE11", "GENE12")
 expr <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/mRNA_FPKM.csv",row.names = 1)
 expr_subset <- expr[genes, ]
