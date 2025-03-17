@@ -4,7 +4,7 @@ library(e1071)
 library(preprocessCore)
 library(parallel)
 
-source("Cibersort.R")
+source("/mnt/raid5/User/bailin/project/240909Carotid.plaque/result/bulk/Cibersort/Cibersort.R")
 #需要FPKM表达谱
 expr <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/mRNA_FPKM.csv", row.names = 1)
 #如果标准化了
