@@ -1,0 +1,50 @@
+data <- read.csv("")#目标基因的表达谱
+library(glmnet)
+library(caret)
+library(pROC)
+# 转置数据：行是样本，列是基因
+data_t <- t(data)   # 结果为 16样本 × 16基因
+data_t <- as.data.frame(data_t)
+
+# 提取样本分组信息，列名中第6位字母区分 C or D
+sample_names <- rownames(data_t)
+group_letter <- substr(sample_names, 6, 6)
+label <- ifelse(group_letter == "D", 1, 0)  # D为case(1), C为normal(0)
+
+# 添加标签列
+data_t$label <- label
+
+# 分离特征与标签
+x <- as.matrix(data_t[, 1:16])  # 16基因表达值
+y <- as.factor(data_t$label)   # 0/1 标签
+
+# 建立 Lasso + LOOCV 交叉验证
+set.seed(123)
+cvfit <- cv.glmnet(x, y, family = "binomial", alpha = 1, nfolds = nrow(x))
+
+# 获取最优lambda
+best_lambda <- cvfit$lambda.min
+print(paste("最优lambda:", best_lambda))
+
+# 用最优lambda建立最终模型
+lasso_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+
+# 查看被选中的基因（非0系数）
+coef_selected <- coef(lasso_model)
+selected_genes <- rownames(coef_selected)[which(coef_selected != 0)]
+print("被选中的重要基因：")
+print(selected_genes)
+
+# 预测与评估
+pred_prob <- predict(lasso_model, newx = x, type = "response")
+pred_label <- ifelse(pred_prob > 0.5, 1, 0)
+
+# 混淆矩阵评估
+confusion <- confusionMatrix(as.factor(pred_label), y)
+print(confusion)
+
+# AUC曲线
+roc_obj <- roc(as.numeric(y), as.numeric(pred_prob))
+auc_value <- auc(roc_obj)
+print(paste("模型AUC:", round(auc_value, 3)))
+plot(roc_obj, main = paste("ROC Curve (AUC =", round(auc_value, 3), ")"))
