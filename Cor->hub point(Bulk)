@@ -29,7 +29,7 @@ write.csv(corresult1,file = "LUSC_lnc_corresult7.csv")
 #2.寻找共表达网络的hub节点
 ###构建网络
 library(igraph)
-ppi_network <- graph_from_data_frame(d = data[, c("gene", "lnc")], directed = FALSE)
+ppi_network <- graph_from_data_frame(d = corresult1[, c("gene", "lnc")], directed = FALSE)
 print(ppi_network)
 
 # 计算度数中心性
