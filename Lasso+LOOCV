@@ -37,16 +37,10 @@ dev.off()
 #（6）选择最佳lambda拟合最终模型
 best_lambda <- cv_fit$lambda.min
 cat("最佳lambda:", best_lambda, "\n")
-final_model <- glmnet(
-  x = x_train,
-  y = y_train,
-  family = "binomial",
-  alpha = 1,
-  lambda = best_lambda
-)
+final_model <- glmnet(x = x_train, y = y_train, family = "binomial", alpha = 1, lambda = best_lambda)
 #（7）绘制Probability
-data_plot <- X_train
-predicted_probabilities <- predict(model, newdata = data_plot, type = "response")
+data_plot <- x_train
+predicted_probabilities <- predict(final_model, newdata = data_plot, type = "response")
 data_plot$predicted_probabilities <- predicted_probabilities
 pdf("fig2.pdf", width = 10,height = 10)
 ggplot(data_plot, aes(x = predicted_probabilities)) +
@@ -71,12 +65,12 @@ print(non_zero_coef)
 #（1）预测测试集并可视化
 pred_prob <- predict(final_model, newx = x_test, type = "response")
 pred_class <- ifelse(pred_prob >= 0.5, 1, 0)
-probability_data <- data.frame(Probability = predictions, True_Label = factor(y_test))
-p1 <- ggplot(probability_data, aes(x = Probability, fill = True_Label)) +
+probability_data <- data.frame(Probability = pred_prob, True_Label = factor(y_test))
+p1 <- ggplot(probability_data, aes(x = pred_prob, fill = True_Label)) +
   geom_density(alpha = 0.6) +
   labs(title = "Probability Distribution Plot", x = "Predicted Probability", y = "Density") +
   theme_minimal()
-ggsave("probability", p1, width = 10, height = 10)
+ggsave("probability.pdf", p1, width = 10, height = 10)
 #(2)混淆矩阵评估
 y_test_factor <- factor(ifelse(y_test == 1, "case", "normal"))
 pred_class_factor <- factor(ifelse(pred_class == 1, "case", "normal"))
