@@ -1,50 +1,144 @@
-data <- read.csv("")#目标基因的表达谱
+#1.准备数据
+mRNA <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/norm_mRNA.csv",row.names =1)
+lncRNA <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/01Data/norm_lncRNA.csv",row.names = 1)
+identical(colnames(mRNA), colnames(lncRNA)) 
+combined_expr <- rbind(mRNA, lncRNA)
+head(combined_expr)
+dim(combined_expr)
+gene <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/06/IRGs+IRlncs.csv",row.names = 1)
+data <- combined_expr[gene$x,]
+write.csv(data,"expr.csv")
+
+#2.构建模型
 library(glmnet)
 library(caret)
 library(pROC)
-# 转置数据：行是样本，列是基因
-data_t <- t(data)   # 结果为 16样本 × 16基因
-data_t <- as.data.frame(data_t)
+library(ggplot2)
+data <- read.csv("/mnt/raid5/User/bailin/project/241209Constipation_lncRNA/result/06/expr.csv",row.names = 1)
+#（1）样本名及标签提取
+sample_names <- colnames(data)
+sixth_letters <- substr(sample_names, 6, 6)
+labels <- ifelse(sixth_letters == "D", 1, 0)  # case = 1, normal = 0
+#（2）随机划分训练集（12个）和测试集（4个）
+set.seed(1)
+test_ids <- sample(sample_names, 4)
+train_ids <- setdiff(sample_names, test_ids)
+#（3）拆分表达矩阵并转置（样本 × 基因）
+x_train <- t(data[, train_ids])
+x_test <- t(data[, test_ids])
+#（4）拆分标签
+y_train <- labels[match(train_ids, sample_names)]
+y_test <- labels[match(test_ids, sample_names)]
+#（5）Lasso建模：使用交叉验证选择最优lambda
+cv_fit <- cv.glmnet(x = x_train, y = y_train, family = "binomial",alpha = 1,# Lasso
+  nfolds = 5)
+plot(cv_fit)
+dev.off()
+#（6）选择最佳lambda拟合最终模型
+best_lambda <- cv_fit$lambda.min
+cat("最佳lambda:", best_lambda, "\n")
+final_model <- glmnet(
+  x = x_train,
+  y = y_train,
+  family = "binomial",
+  alpha = 1,
+  lambda = best_lambda
+)
+#（7）绘制Probability
+data_plot <- X_train
+predicted_probabilities <- predict(model, newdata = data_plot, type = "response")
+data_plot$predicted_probabilities <- predicted_probabilities
+pdf("fig2.pdf", width = 10,height = 10)
+ggplot(data_plot, aes(x = predicted_probabilities)) +
+  geom_density(fill = "blue", alpha = 0.5) +  # 密度图
+  labs(title = "Probability Distribution of Predictions", 
+       x = "Predicted Probability", 
+       y = "Density") +
+  theme_minimal()
+dev.off()
+#（8）输出基因与系数
+lasso_coef <- coef(final_model)
+# 转为 data frame，移除系数为0的项
+coef_df <- as.data.frame(as.matrix(lasso_coef))
+coef_df$gene <- rownames(coef_df)
+colnames(coef_df)[1] <- "coefficient"
+# 筛选非零系数（含截距项）
+non_zero_coef <- coef_df[coef_df$coefficient != 0, ]
+# 输出非零系数的基因和对应值
+print(non_zero_coef)
 
-# 提取样本分组信息，列名中第6位字母区分 C or D
-sample_names <- rownames(data_t)
-group_letter <- substr(sample_names, 6, 6)
-label <- ifelse(group_letter == "D", 1, 0)  # D为case(1), C为normal(0)
+#3.评估模型
+#（1）预测测试集并可视化
+pred_prob <- predict(final_model, newx = x_test, type = "response")
+pred_class <- ifelse(pred_prob >= 0.5, 1, 0)
+probability_data <- data.frame(Probability = predictions, True_Label = factor(y_test))
+p1 <- ggplot(probability_data, aes(x = Probability, fill = True_Label)) +
+  geom_density(alpha = 0.6) +
+  labs(title = "Probability Distribution Plot", x = "Predicted Probability", y = "Density") +
+  theme_minimal()
+ggsave("probability", p1, width = 10, height = 10)
+#(2)混淆矩阵评估
+y_test_factor <- factor(ifelse(y_test == 1, "case", "normal"))
+pred_class_factor <- factor(ifelse(pred_class == 1, "case", "normal"))
+conf_mat <- confusionMatrix(pred_class_factor, y_test_factor)
+print(conf_mat)
 
-# 添加标签列
-data_t$label <- label
+# 确保预测结果和真实标签为因子，且 levels 一致
+pred_class_factor <- factor(pred_class, levels = c(0, 1), labels = c("normal", "case"))
+y_test_factor <- factor(y_test, levels = c(0, 1), labels = c("normal", "case"))
+# 计算混淆矩阵
+conf_matrix <- confusionMatrix(pred_class_factor, y_test_factor)
+print(conf_matrix)
+# 混淆矩阵 table 保存
+conf_matrix_df <- as.data.frame(conf_matrix$table)
+write.csv(conf_matrix_df, file = "confusion_matrix.csv", row.names = FALSE)
+# 整体统计指标（Accuracy等）
+stats_df <- as.data.frame(t(conf_matrix$overall))
+write.csv(stats_df, file = "confusion_matrix_stats.csv", row.names = FALSE)
+# 分类统计指标（敏感性、特异性等）
+class_stats_df <- as.data.frame(t(conf_matrix$byClass))
+write.csv(class_stats_df, file = "class_stats.csv", row.names = FALSE)
+# 可选：打印预测结果 vs 实际标签
+comparison <- data.frame(Sample = test_ids,
+                         Predicted = pred_class_factor,
+                         Actual = y_test_factor)
+print(comparison)
+write.csv(comparison, "prediction_vs_actual.csv", row.names = FALSE)
 
-# 分离特征与标签
-x <- as.matrix(data_t[, 1:16])  # 16基因表达值
-y <- as.factor(data_t$label)   # 0/1 标签
 
-# 建立 Lasso + LOOCV 交叉验证
-set.seed(123)
-cvfit <- cv.glmnet(x, y, family = "binomial", alpha = 1, nfolds = nrow(x))
+conf_matrix <- confusionMatrix(factor(predictions), factor(y_test))
+# 假设 y_test 是实际的标签，predictions 是模型预测的类别
+# 计算混淆矩阵
+conf_matrix <- confusionMatrix(factor(predictions), factor(y_test))
+print(conf_matrix)
+conf_matrix_df <- as.data.frame(conf_matrix$table)
+write.csv(conf_matrix_df, file = "confusion_matrix.csv", row.names = FALSE)
+# 打印混淆矩阵的统计指标，例如Accuracy、Sensitivity、Specificity等
+stats_df <- as.data.frame(t(conf_matrix$overall))
+write.csv(stats_df, file = "confusion_matrix_stats.csv", row.names = FALSE)
+# 可选：也可以保存分类统计，例如敏感性和特异性
+class_stats_df <- as.data.frame(t(conf_matrix$byClass))
+write.csv(class_stats_df, file = "class_stats.csv", row.names = FALSE)
 
-# 获取最优lambda
-best_lambda <- cvfit$lambda.min
-print(paste("最优lambda:", best_lambda))
+#(3)绘制ROC曲线
+library(pROC)
+roc_curve <- roc(y_test, predictions_prob,ci=T, direction="<")
+auc_value <- auc(roc_curve)
 
-# 用最优lambda建立最终模型
-lasso_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+data_ci<-ciobj[1:11,1:3]
+data_ci<-as.data.frame(data_ci)
+x=1-as.numeric(rownames(data_ci))
+data_ci<-data.frame(x,data_ci)
 
-# 查看被选中的基因（非0系数）
-coef_selected <- coef(lasso_model)
-selected_genes <- rownames(coef_selected)[which(coef_selected != 0)]
-print("被选中的重要基因：")
-print(selected_genes)
+pdf("ROC_pro.pdf",width = 10,height = 10)
+ggroc(roc_curve, legacy.axes=T, size=2) +
+ geom_segment(aes(x=0, y=0, xend=1, yend=1), colour='grey', linetype = 'dotdash') + 
+ geom_ribbon(data=data_ci, aes(x=x, ymin=X2.5., ymax=X97.5.), fill='#1E90FF', alpha=0.5) + 
+# geom_line(aes(x=1-roc_curve$specificities, y=roc_curve$sensitivities), size=2) +
+ labs(title=paste("AUC:", round(roc_curve$auc, 3), "(", round(roc_curve$ci, 3)[1], "-", round(roc_curve$ci, 3)[3], ")", sep=""), x="1-Specificity", y="Sensitivity") + 
+ theme_bw() + 
+ theme(text=element_text(size=15, family="sans"), plot.title=element_text(hjust=0.5, family="sans"), axis.title=element_text(size=20, family="sans"), title=element_text(size=25, family="sans"))
+dev.off()
 
-# 预测与评估
-pred_prob <- predict(lasso_model, newx = x, type = "response")
-pred_label <- ifelse(pred_prob > 0.5, 1, 0)
-
-# 混淆矩阵评估
-confusion <- confusionMatrix(as.factor(pred_label), y)
-print(confusion)
-
-# AUC曲线
-roc_obj <- roc(as.numeric(y), as.numeric(pred_prob))
-auc_value <- auc(roc_obj)
-print(paste("模型AUC:", round(auc_value, 3)))
-plot(roc_obj, main = paste("ROC Curve (AUC =", round(auc_value, 3), ")"))
+printOut = cbind(round(roc_curve$auc, 3), round(roc_curve$ci, 3)[1], round(roc_curve$ci, 3)[3])
+write.table(printOut, file=paste(args[5], ".auc.xls", sep =""), sep="\t", quote=F, row.names=F, col.names=F)
