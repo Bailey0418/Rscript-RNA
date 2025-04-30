@@ -254,5 +254,24 @@ p2 <- pheatmap(expression_matrix,
                color = color_palette)  # 使用黄色到紫色的渐变色
 ggsave("Heatmap_abs_log2FC_4.pdf",plot = p2, width = 10, height = 10)
 (3)挑选差异基因做小提琴图
-p3 <- VlnPlot(tissue_HC, features = c("Pou4f3", "Tmc1","Myo7a"), group.by = "condition", pt.size = 0)
-ggsave("Violin Plot.pdf",plot = p3, width = 15, height = 5)#记得改图片大小
+library(Seurat)
+library(ggpubr)
+
+# 生成基础小提琴图（不加点，方便美观）
+p3 <- VlnPlot(
+  tissue,
+  features = gene,
+  group.by = "condition",
+  pt.size = 0,
+  combine = FALSE  # 为每个基因分别生成 ggplot 对象，方便添加p值
+)
+
+# 添加p值（默认用 Wilcoxon 检验）
+p3 <- lapply(p3, function(plot) {
+  plot + stat_compare_means(method = "wilcox.test", label = "p.format")
+})
+
+# 合并图
+library(patchwork)
+p3 <- wrap_plots(p3, ncol = 3)
+ggsave("Violin Plot.pdf",plot = p3, width = 15, height = 15)#记得改图片大小
