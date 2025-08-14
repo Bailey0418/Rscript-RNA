@@ -21,7 +21,7 @@ top_GO <- top_GO %>%
 # 按照GeneRatio排序，选择每个Category的前五个GO term
 top_GO <- top_GO %>%
   group_by(Category) %>%
-  top_n(5, wt = GeneRatio) %>%
+  slice_max(order_by = GeneRatio, n = 5, with_ties = FALSE) %>%
   ungroup() %>%
   mutate(Description = fct_reorder(Description, GeneRatio))
 
