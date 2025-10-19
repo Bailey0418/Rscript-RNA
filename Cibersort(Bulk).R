@@ -80,8 +80,17 @@ df_p <- cor_res$p %>%
         rownames_to_column(var = "gene") %>%
         pivot_longer(-1,names_to = "cell_type", values_to = "pvalue")
 df_cor <- df_r %>%
-          left_join(df_p) %>%
-          mutate(stars = cut(pvalue, breaks = c(-Inf, 0.05, 0.01, 0.00, Inf),right = F, labels = c("***", "**", "*", " ")))
+  left_join(df_p) %>%
+  # 增加FDR校正
+  mutate(
+    p_adj = p.adjust(pvalue, method = "BH"),   # Benjamini–Hochberg FDR
+    stars = cut(
+      p_adj,
+      breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+      right = FALSE,
+      labels = c("***", "**", "*", " ")
+    )
+  )
 head(df_cor)
 df_filtered <- df_cor %>%
   filter(!cell_type %in% c("Correlation", "P-value", "RMSE"))
