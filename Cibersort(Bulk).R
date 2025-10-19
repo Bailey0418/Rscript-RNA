@@ -91,9 +91,9 @@ df_cor <- df_r %>%
       labels = c("***", "**", "*", " ")
     )
   )
-head(df_cor)
 df_filtered <- df_cor %>%
   filter(!cell_type %in% c("Correlation", "P-value", "RMSE"))
+head(df_filtered)
 
 df_matrix <- df_filtered %>%
   select(gene, cell_type, correlation) %>%
@@ -104,12 +104,15 @@ gene_clust <- hclust(gene_dist)# 使用层次聚类
 df_filtered$gene <- factor(df_filtered$gene, levels = gene_clust$labels[gene_clust$order])# 对 gene 进行聚类后的排序
 
 library(ggplot2)
-pdf("cibersort_cor.pdf",width = 15,height = 8)
+pdf("cibersort_cor_FDR.pdf",width = 15,height = 8)
 ggplot(df_filtered, aes(cell_type, gene)) +
   geom_tile(aes(fill = correlation)) +
   geom_text(aes(label = stars), color = "black", size = 4) +
-  scale_fill_gradient2(low = "lightblue", high = "lightcoral", mid = "white",
-                       limit = c(-1, 1), name = paste0("*    p < 0.05", "\n\n", "**  p < 0.01", "\n\n", "*** p < 0.001", "\n\n", "Correlation")) +
+  scale_fill_gradient2(low = "lightblue", high = "lightcoral", mid = "white", limit = c(-1, 1),
+                       name = paste0("*    FDR < 0.05", "\n\n",
+                                     "**  FDR < 0.01", "\n\n",
+                                     "*** FDR < 0.001", "\n\n",
+                                     "Correlation"))+
   labs(x = NULL, y = NULL) +
   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1, color = "black"),
         axis.text.y = element_text(size = 8, color = "black"),
